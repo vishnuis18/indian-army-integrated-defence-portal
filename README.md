@@ -192,10 +192,19 @@ Any authentication, telemetry, command, or encryption-related elements shown in 
 
 ## 📸 Project Preview
 
-Add your project screenshot here:
+Add your project screenshot here
 
 ```markdown
-![Indian Army Integrated Defence Portal](./assets/images/project-preview.png)
+<img width="1919" height="876" alt="image" src="https://github.com/user-attachments/assets/f2e14ce7-7fe8-46e5-ab5e-31fdb6d12eef" />
+
+<img width="1919" height="899" alt="image" src="https://github.com/user-attachments/assets/6cbb438c-ac4c-41d9-91ff-86b5eefe9a72" />
+
+<img width="1919" height="912" alt="image" src="https://github.com/user-attachments/assets/93b7bb0f-d8ef-4937-a6e0-7b55739e4a1e" />
+
+<img width="1917" height="898" alt="image" src="https://github.com/user-attachments/assets/939d3b4b-95d9-45cf-bf2f-34d0ab624c43" />
+
+<img width="1912" height="883" alt="image" src="https://github.com/user-attachments/assets/2a461d58-9656-4a44-bf91-a5e28d0d3867" />
+
 ```
 
 ---
