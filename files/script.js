@@ -1,6 +1,366 @@
 const { useState, useEffect, useMemo, useRef } = React;
 
 /* ==========================================================================
+   FLIPPING WORD SWAP COMPONENT (PERFECT NATURAL SPACING & SPELLING)
+   ========================================================================== */
+
+function FlippingWordSwap({
+  word1 = "MISSION",
+  word2 = "SECURITY",
+  duration = 420,
+  stagger = 32,
+  interval = 3200,
+  autoPlay = true,
+  className = "",
+  toClassName = "",
+  style = {},
+}) {
+  const [flipped, setFlipped] = useState(false);
+
+  useEffect(() => {
+    if (!autoPlay) return;
+    const timer = setInterval(() => {
+      setFlipped(prev => !prev);
+    }, interval);
+    return () => clearInterval(timer);
+  }, [autoPlay, interval]);
+
+  const chars1 = word1.split('');
+  const chars2 = word2.split('');
+
+  return (
+    <div
+      className={`flipping-word-swap-container ${className} ${flipped ? toClassName : ''}`}
+      style={{
+        position: 'relative',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        userSelect: 'none',
+        perspective: '1000px',
+        lineHeight: 1,
+        ...style
+      }}
+      onMouseEnter={() => setFlipped(prev => !prev)}
+      onClick={() => setFlipped(prev => !prev)}
+      title="Hover or tap to flip"
+    >
+      {/* Word 1 Layer - Rendered with natural font kerning & exact spelling */}
+      <span
+        className="flipping-word-swap-layer"
+        style={{
+          visibility: flipped ? 'hidden' : 'visible',
+          transition: `visibility 0s linear ${flipped ? (chars1.length * stagger + duration) : 0}ms`,
+        }}
+      >
+        {chars1.map((char, index) => {
+          const delay = flipped ? index * stagger : (chars1.length - 1 - index) * (stagger * 0.6);
+          return (
+            <span
+              key={index}
+              style={{
+                display: 'inline-block',
+                whiteSpace: 'pre',
+                transition: `transform ${duration}ms cubic-bezier(0.2, 0.9, 0.3, 1) ${delay}ms, opacity ${duration * 0.75}ms ease ${delay}ms`,
+                transform: flipped ? 'translateY(-110%) rotateX(85deg)' : 'translateY(0%) rotateX(0deg)',
+                opacity: flipped ? 0 : 1,
+                transformOrigin: '50% 100%',
+              }}
+            >
+              {char}
+            </span>
+          );
+        })}
+      </span>
+
+      {/* Word 2 Layer - Positioned over the same center with natural font kerning */}
+      <span
+        className="flipping-word-swap-layer"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          visibility: flipped ? 'visible' : 'hidden',
+          transition: `visibility 0s linear ${flipped ? 0 : (chars2.length * stagger + duration)}ms`,
+        }}
+      >
+        {chars2.map((char, index) => {
+          const delay = flipped ? index * stagger : (chars2.length - 1 - index) * (stagger * 0.6);
+          return (
+            <span
+              key={index}
+              style={{
+                display: 'inline-block',
+                whiteSpace: 'pre',
+                transition: `transform ${duration}ms cubic-bezier(0.2, 0.9, 0.3, 1) ${delay}ms, opacity ${duration * 0.75}ms ease ${delay}ms`,
+                transform: flipped ? 'translateY(0%) rotateX(0deg)' : 'translateY(110%) rotateX(-85deg)',
+                opacity: flipped ? 1 : 0,
+                transformOrigin: '50% 0%',
+              }}
+            >
+              {char}
+            </span>
+          );
+        })}
+      </span>
+    </div>
+  );
+}
+
+/* ==========================================================================
+   SCROLL BASED VELOCITY COMPONENT (SPEED-REACTIVE INFINITE VELOCITY SCROLL)
+   ========================================================================== */
+
+function ScrollBasedVelocity({
+  text = "STRATEGIC PILLARS OF DEFENCE",
+  default_velocity = 1.0,
+  numCopies = 5,
+  className = "",
+  style = {},
+}) {
+  const containerRef = useRef(null);
+  const track1Ref = useRef(null);
+  const posRef = useRef(0);
+  const velocityRef = useRef(default_velocity);
+  const targetVelocityRef = useRef(default_velocity);
+  const lastScrollY = useRef(window.scrollY);
+  const lastTime = useRef(performance.now());
+  const baseDirRef = useRef(1); // 1 = left, -1 = right
+  const rafId = useRef(null);
+
+  useEffect(() => {
+    let scrollTimeout = null;
+
+    const handleScroll = () => {
+      const now = performance.now();
+      const currentScrollY = window.scrollY;
+      const dt = Math.max(1, now - lastTime.current);
+      const dy = currentScrollY - lastScrollY.current;
+      
+      if (Math.abs(dy) > 0.5) {
+        const scrollSpeed = (Math.abs(dy) / dt) * 3.5;
+        const boost = Math.min(scrollSpeed, 5.0);
+        
+        // Scroll DOWN (dy > 0) => accelerate left (positive velocity)
+        // Scroll UP (dy < 0) => accelerate right (negative velocity)
+        if (dy > 0) {
+          baseDirRef.current = 1;
+          targetVelocityRef.current = default_velocity + boost;
+        } else if (dy < 0) {
+          baseDirRef.current = -1;
+          targetVelocityRef.current = -(default_velocity + boost);
+        }
+      }
+
+      lastScrollY.current = currentScrollY;
+      lastTime.current = now;
+
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        // Return to steady default speed in the active direction
+        targetVelocityRef.current = baseDirRef.current * default_velocity;
+      }, 120);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    let lastFrameTime = performance.now();
+
+    const animate = (now) => {
+      const delta = Math.min((now - lastFrameTime) / 16.67, 2.0);
+      lastFrameTime = now;
+
+      // Smooth lerp transition between velocities and directions
+      velocityRef.current += (targetVelocityRef.current - velocityRef.current) * 0.08;
+      
+      // Move continuous position
+      posRef.current -= velocityRef.current * delta;
+
+      if (containerRef.current && track1Ref.current) {
+        const setWidth = track1Ref.current.offsetWidth;
+        if (setWidth > 0) {
+          // Bidirectional seamless wrapping
+          while (posRef.current <= -setWidth * 2) {
+            posRef.current += setWidth;
+          }
+          while (posRef.current >= 0) {
+            posRef.current -= setWidth;
+          }
+          containerRef.current.style.transform = `translate3d(${posRef.current}px, 0, 0)`;
+        }
+      }
+
+      rafId.current = requestAnimationFrame(animate);
+    };
+
+    // Position in middle buffer set on mount
+    const timer = setTimeout(() => {
+      if (track1Ref.current) {
+        posRef.current = -track1Ref.current.offsetWidth;
+      }
+    }, 50);
+
+    rafId.current = requestAnimationFrame(animate);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (rafId.current) cancelAnimationFrame(rafId.current);
+      clearTimeout(scrollTimeout);
+      clearTimeout(timer);
+    };
+  }, [default_velocity]);
+
+  const copies = useMemo(() => Array.from({ length: numCopies }, (_, i) => i), [numCopies]);
+
+  return (
+    <div className="scroll-velocity-wrapper">
+      <div
+        ref={containerRef}
+        className={`scroll-velocity-track ${className}`}
+        style={{
+          display: 'inline-flex',
+          whiteSpace: 'nowrap',
+          willChange: 'transform',
+          ...style
+        }}
+      >
+        {/* Set 1 */}
+        <div ref={track1Ref} className="scroll-velocity-item">
+          {copies.map(i => (
+            <span key={`a-${i}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '36px' }}>
+              <span>{text}</span>
+              <span className="scroll-velocity-divider">✦</span>
+            </span>
+          ))}
+        </div>
+
+        {/* Set 2 (Middle Active Set) */}
+        <div className="scroll-velocity-item">
+          {copies.map(i => (
+            <span key={`b-${i}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '36px' }}>
+              <span>{text}</span>
+              <span className="scroll-velocity-divider">✦</span>
+            </span>
+          ))}
+        </div>
+
+        {/* Set 3 (Right Buffer for Bidirectional Runway) */}
+        <div className="scroll-velocity-item">
+          {copies.map(i => (
+            <span key={`c-${i}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '36px' }}>
+              <span>{text}</span>
+              <span className="scroll-velocity-divider">✦</span>
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ==========================================================================
+   COMPONENT BOX CARD TEMPLATE (CLEAN, NO OVERFLOW, PROPERLY ARRANGED)
+   ========================================================================== */
+
+function ComponentBoxCard({
+  category = "Defence Domain",
+  actionLabel = "Details >",
+  onAction,
+  word1 = "MISSION",
+  word2 = "SECURITY",
+  title = "Strategic Pillar",
+  description = "Operational framework of the Indian Army.",
+  previewBg = "#060d08",
+  previewHeight = 180,
+  fontSize,
+  image,
+  icon,
+  badge,
+  duration = 400,
+  stagger = 32,
+  interval = 3200,
+  className = "",
+  style = {},
+  children
+}) {
+  const maxWordLength = Math.max((word1 || "").length, (word2 || "").length);
+  const calculatedFontSize = fontSize || (
+    maxWordLength >= 11 ? "clamp(1.1rem, 1.8vw, 1.35rem)" :
+    maxWordLength >= 8 ? "clamp(1.2rem, 2.1vw, 1.55rem)" :
+    "clamp(1.3rem, 2.4vw, 1.75rem)"
+  );
+
+  return (
+    <div className={`component-box-card hud-corner ${className}`} style={style} onClick={onAction}>
+      {/* Top Inner Display Box */}
+      <div 
+        className="component-box-inner" 
+        style={{ 
+          background: previewBg,
+          minHeight: previewHeight,
+          position: 'relative',
+          overflow: 'hidden'
+        }}
+      >
+        {image && (
+          <div className="component-box-media-layer">
+            <img src={image} alt={title} />
+            <div className="component-box-media-overlay" />
+          </div>
+        )}
+        
+        {/* Top Header Row */}
+        <div className="component-box-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+            {icon && <span style={{ color: 'var(--gold-light)', flexShrink: 0 }}>{icon}</span>}
+            <span className="component-box-category">{category}</span>
+          </div>
+
+          <div className="component-box-header-right">
+            {badge && <span className="chip chip-gold" style={{ fontSize: 9.5, padding: '2px 7px' }}>{badge}</span>}
+            {actionLabel && (
+              <span className="component-box-action">
+                {actionLabel}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Center Display Area */}
+        <div className="component-box-center">
+          {word1 && word2 ? (
+            <FlippingWordSwap
+              word1={word1}
+              word2={word2}
+              duration={duration}
+              stagger={stagger}
+              interval={interval}
+              style={{
+                fontSize: calculatedFontSize,
+                fontWeight: 800,
+                letterSpacing: "0.03em",
+                textTransform: "uppercase",
+                fontFamily: "var(--font-display)",
+                color: "var(--ink-bright)",
+              }}
+            />
+          ) : children}
+        </div>
+      </div>
+
+      {/* Bottom Info Section */}
+      <div className="component-box-info">
+        <h3 className="component-box-title">{title}</h3>
+        <p className="component-box-desc">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ==========================================================================
    MOCK DATA & REPOSITORIES (PRESERVED & ENHANCED)
    ========================================================================== */
 
@@ -55,20 +415,22 @@ const AUDIT_LOG = [
 ];
 
 const COMMANDS_DATA = [
-  { name: "Northern Command", hq: "Udhampur, J&K", motto: "Always in Front", desc: "Guards the northern frontiers, Siachen Glacier, and LOC with supreme readiness in high altitude terrain." },
-  { name: "Western Command", hq: "Chandimandir, Haryana", motto: "Ever Victorious", desc: "Defends the northern plains and western sectors, maintaining rapid armoured and mechanised strike capability." },
-  { name: "Eastern Command", hq: "Fort William, Kolkata", motto: "Courage and Valour", desc: "Protects eastern borders, dense jungle corridors, and high-altitude Himalayan mountain passes." },
-  { name: "Southern Command", hq: "Pune, Maharashtra", motto: "Valour and Wisdom", desc: "Spans island territories, desert sectors, and southern peninsula defence with combined-arms agility." },
-  { name: "Central Command", hq: "Lucknow, Uttar Pradesh", motto: "Devotion to Duty", desc: "Oversees key strategic axes, logistical hubs, and operational reserves across central India." },
-  { name: "South Western Command", hq: "Jaipur, Rajasthan", motto: "Forever Victorious", desc: "Command specialized in desert warfare, mechanized strike formations, and rapid response deployment." },
-  { name: "ARTRAC", hq: "Shimla, Himachal Pradesh", motto: "Training for War", desc: "Army Training Command formulating military doctrine, advanced tactical concepts, and officer leadership." },
+  { name: "Northern Command", hq: "Udhampur, J&K", word1: "NORTHERN", word2: "VANGUARD", motto: "Always in Front", desc: "Guards northern frontiers, Siachen Glacier, and LOC with supreme high-altitude readiness." },
+  { name: "Western Command", hq: "Chandimandir, Haryana", word1: "WESTERN", word2: "STRIKE", motto: "Ever Victorious", desc: "Defends northern plains and western sectors with rapid armoured strike capability." },
+  { name: "Eastern Command", hq: "Fort William, Kolkata", word1: "EASTERN", word2: "DEFENCE", motto: "Courage and Valour", desc: "Protects eastern borders, dense jungle corridors, and Himalayan mountain passes." },
+  { name: "Southern Command", hq: "Pune, Maharashtra", word1: "SOUTHERN", word2: "SHIELD", motto: "Valour and Wisdom", desc: "Spans island territories, desert sectors, and southern peninsula defence." },
+  { name: "Central Command", hq: "Lucknow, Uttar Pradesh", word1: "CENTRAL", word2: "RESERVE", motto: "Devotion to Duty", desc: "Oversees strategic axes, logistical hubs, and operational reserves across central India." },
+  { name: "South Western Command", hq: "Jaipur, Rajasthan", word1: "DESERT", word2: "CORPS", motto: "Forever Victorious", desc: "Specialized in desert warfare, mechanized strike formations, and rapid response." },
+  { name: "ARTRAC", hq: "Shimla, Himachal Pradesh", word1: "DOCTRINE", word2: "TACTICS", motto: "Training for War", desc: "Army Training Command formulating military doctrine, tactics, and officer leadership." },
 ];
 
 const GALLERY_ITEMS = [
   {
     id: 1,
     title: "Mountain Warfare & High Altitude",
-    tag: "Northern Theatre // Siachen Axis",
+    category: "Northern Frontier",
+    word1: "SIACHEN",
+    word2: "HIMALAYAS",
     desc: "Indian Army troops conducting high-altitude reconnaissance across Himalayan ridges in sub-zero snow terrain.",
     img: "assets/images/mountain.png",
     specs: "Specialized cold-weather survival gear, mountaineering warfare kit, tactical SATCOM link."
@@ -76,7 +438,9 @@ const GALLERY_ITEMS = [
   {
     id: 2,
     title: "Armoured Strike Columns",
-    tag: "Western & South-Western Theatre",
+    category: "Western Sector",
+    word1: "ARMOURED",
+    word2: "TANKS",
     desc: "Main Battle Tanks maneuvering in battle formation across arid terrain during tactical readiness exercises.",
     img: "assets/images/armour.png",
     specs: "Thermal imaging fire control, dynamic reactive armour, indigenous weapon integration."
@@ -84,7 +448,9 @@ const GALLERY_ITEMS = [
   {
     id: 3,
     title: "Special Forces (PARA SF)",
-    tag: "Special Operations Wing",
+    category: "Special Forces",
+    word1: "AIRBORNE",
+    word2: "SPECIAL",
     desc: "Elite Para Commandos conducting airborne tactical insertion and counter-terrorism precision drills.",
     img: "assets/images/airborne.png",
     specs: "High-altitude freefall insertion, night-vision combat suites, suppressed assault weapons."
@@ -92,7 +458,9 @@ const GALLERY_ITEMS = [
   {
     id: 4,
     title: "C4ISR & Tactical Operations Centre",
-    tag: "Integrated Command Network",
+    category: "Command Network",
+    word1: "INTELLIGENCE",
+    word2: "SURVEILLANCE",
     desc: "Commanders and operations officers monitoring real-time telemetry, satellite feeds, and drone reconnaissance.",
     img: "assets/images/c4isr.png",
     specs: "Secure 256-bit encrypted mesh, multi-domain battlefield management, live asset tracking."
@@ -112,29 +480,23 @@ const NOTICES = [
 
 function ArmyEmblemSvg() {
   return (
-    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="50" r="46" stroke="#c5a059" strokeWidth="2.5" strokeDasharray="3 2" opacity="0.75" />
-      <circle cx="50" cy="50" r="41" stroke="#c5a059" strokeWidth="1.5" />
-      
-      {/* Crossed Swords */}
-      <path d="M28 72 L72 28 M30 74 L24 80 M70 26 L76 20" stroke="#f0f4f1" strokeWidth="3" strokeLinecap="round" />
-      <path d="M72 72 L28 28 M70 74 L76 80 M30 26 L24 20" stroke="#f0f4f1" strokeWidth="3" strokeLinecap="round" />
-      <circle cx="50" cy="50" r="7" fill="#294430" stroke="#c5a059" strokeWidth="2" />
-      
-      {/* Ashoka Lion Motif Pillar Top */}
-      <path d="M46 36 L54 36 L53 45 L47 45 Z" fill="#c5a059" />
-      <rect x="44" y="32" width="12" height="4" rx="1" fill="#dfba74" />
-      
-      {/* Golden Star & Laurel */}
-      <path d="M50 20 L52 24 L56 25 L53 28 L54 32 L50 30 L46 32 L47 28 L44 25 L48 24 Z" fill="#c5a059" />
-      <path d="M35 62 C40 68, 60 68, 65 62" stroke="#c5a059" strokeWidth="2" strokeLinecap="round" />
-    </svg>
+    <img 
+      src="assets/images/army_emblem.png" 
+      alt="Indian Army Emblem" 
+      style={{
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover',
+        borderRadius: '50%',
+        display: 'block'
+      }} 
+    />
   );
 }
 
 function IconShield() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
     </svg>
   );
@@ -142,7 +504,7 @@ function IconShield() {
 
 function IconRadar() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
       <path d="M12 12m-5 0a5 5 0 1 0 10 0a5 5 0 1 0 -10 0" />
       <path d="M12 3v9l6 6" />
@@ -152,7 +514,7 @@ function IconRadar() {
 
 function IconCpu() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="4" y="4" width="16" height="16" rx="2"/>
       <rect x="9" y="9" width="6" height="6"/>
       <path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/>
@@ -162,7 +524,7 @@ function IconCpu() {
 
 function IconUsers() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
       <circle cx="9" cy="7" r="4"/>
       <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
@@ -419,10 +781,10 @@ function HeroSection({ onExplore, onOpenDDMS }) {
             </span>
           </div>
 
-          <div className="hero-title heading-hero">
+          <h1 className="hero-title heading-hero">
             <span>SERVICE BEFORE</span>
             <span className="title-accent">SELF</span>
-          </div>
+          </h1>
 
           <div className="hero-sanskrit">
             सेवा परमो धर्म: // SEVA PARAMO DHARMA
@@ -442,8 +804,8 @@ function HeroSection({ onExplore, onOpenDDMS }) {
           </div>
         </div>
 
-        {/* Telemetry Live HUD */}
-        <div className="hero-telemetry-card hud-corner scanline">
+        {/* Telemetry Live HUD (Enlarged & Prominent) */}
+        <div className="hero-telemetry-card scanline">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12, borderBottom: '1px solid var(--line)' }}>
             <span className="eyebrow">COMMAND TELEMETRY</span>
             <span className="chip chip-duty">LIVE SYSTEM</span>
@@ -470,7 +832,7 @@ function HeroSection({ onExplore, onOpenDDMS }) {
 
             <div className="telemetry-item">
               <div className="telemetry-label">ENCRYPTION PROTOCOL</div>
-              <div className="telemetry-val" style={{ fontSize: '1.25rem', color: 'var(--steel)' }}>256-BIT SHA</div>
+              <div className="telemetry-val" style={{ fontSize: '1.4rem', color: 'var(--steel)' }}>256-BIT SHA</div>
               <div className="telemetry-sub">Restricted Defence Node</div>
             </div>
           </div>
@@ -487,45 +849,84 @@ function HeroSection({ onExplore, onOpenDDMS }) {
 function StrategicPillars() {
   const pillars = [
     {
+      category: "Territorial Defence",
+      word1: "MISSION",
+      word2: "SECURITY",
+      title: "Mission & Security",
+      desc: "Safeguarding territorial integrity across 15,000+ km of land borders through proactive mountain warfare posture and rapid deterrence.",
       icon: <IconShield />,
-      title: "MISSION & SECURITY",
-      desc: "Safeguarding territorial integrity across 15,000+ km of land borders. Deterring aggression through proactive forward posture, mountain warfare excellence, and rapid joint-force strike capabilities."
+      badge: "Doctrine"
     },
     {
+      category: "Military Ethos",
+      word1: "DISCIPLINE",
+      word2: "VALOUR",
+      title: "Discipline & Valour",
+      desc: "Forged in over a century of unparalleled valor, sacrifice, and supreme devotion. Upholding ethical chain-of-command integrity.",
       icon: <IconUsers />,
-      title: "DISCIPLINE & HERITAGE",
-      desc: "Forged in over a century of unparalleled valor, sacrifice, and supreme devotion. Upholding the highest standards of military ethics, rigorous conditioning, and selfless duty to the motherland."
+      badge: "Tradition"
     },
     {
+      category: "Tactical C4ISR",
+      word1: "TECHNOLOGY",
+      word2: "TACTICAL",
+      title: "Modernization & Tech",
+      desc: "Integrating indigenous drone surveillance networks, AI-assisted telemetry, automated QR logistics, and digital DDMS duty rosters.",
       icon: <IconCpu />,
-      title: "TECHNOLOGY & MODERNIZATION",
-      desc: "Integrating state-of-the-art C4ISR systems, indigenous drone surveillance networks, AI-assisted telemetry, automated QR logistics, and digital duty roster algorithms."
+      badge: "Next-Gen"
     },
     {
+      category: "Nation First",
+      word1: "VIGILANCE",
+      word2: "SERVICE",
+      title: "Vigilance & Service",
+      desc: "Providing round-the-clock humanitarian disaster relief (HADR), civil defense support, and leading global peacekeeping deployments.",
       icon: <IconRadar />,
-      title: "NATION BUILDING & SERVICE",
-      desc: "Providing round-the-clock humanitarian assistance, disaster relief (HADR), infrastructure in remote border frontiers, and leading global peacekeeping deployments under the UN mandate."
+      badge: "24/7 Vigil"
     },
   ];
 
   return (
     <section id="about" className="section">
       <div className="section-container">
-        <div className="section-header section-header-center">
+        <div className="section-header section-header-center" style={{ marginBottom: 38 }}>
           <span className="eyebrow">CORE FOUNDATIONS</span>
-          <h2 className="heading-section">STRATEGIC PILLARS OF DEFENCE</h2>
+          <div style={{ width: '100%', margin: '14px 0 10px' }}>
+            <ScrollBasedVelocity
+              text="STRATEGIC PILLARS OF DEFENCE"
+              default_velocity={1.0}
+              style={{
+                fontFamily: "var(--font-display)",
+                fontWeight: 800,
+                fontSize: "clamp(1.9rem, 3.8vw, 3rem)",
+                letterSpacing: "0.04em",
+                color: "var(--ink-bright)",
+                textTransform: "uppercase"
+              }}
+            />
+          </div>
           <p className="section-subtitle">
-            The values, doctrine, and technological framework empowering the Indian Army across every operational frontier.
+            Hover or tap any card to experience the interactive word swap. The values, doctrine, and tactical pillars of the Indian Army.
           </p>
         </div>
 
         <div className="pillars-grid">
           {pillars.map((p, idx) => (
-            <div key={idx} className="pillar-card hud-corner">
-              <div className="pillar-icon-box">{p.icon}</div>
-              <h3 className="pillar-title">{p.title}</h3>
-              <p className="pillar-desc">{p.desc}</p>
-            </div>
+            <ComponentBoxCard
+              key={idx}
+              category={p.category}
+              actionLabel="View >"
+              word1={p.word1}
+              word2={p.word2}
+              title={p.title}
+              description={p.desc}
+              icon={p.icon}
+              badge={p.badge}
+              previewHeight={175}
+              duration={400}
+              stagger={34}
+              interval={3000 + idx * 400}
+            />
           ))}
         </div>
       </div>
@@ -573,22 +974,20 @@ function CommandsSection() {
 
           <div className="commands-grid">
             {COMMANDS_DATA.map((c, i) => (
-              <div key={i} className="command-card hud-corner">
-                <div>
-                  <div className="command-card-header">
-                    <div>
-                      <h3 className="command-name">{c.name}</h3>
-                      <div className="command-hq">HQ: {c.hq}</div>
-                    </div>
-                    <span className="chip chip-gold">Active Command</span>
-                  </div>
-                  <p className="command-desc">{c.desc}</p>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--line)', paddingTop: 12 }}>
-                  <span className="mono" style={{ fontSize: 11, color: 'var(--gold-light)' }}>MOTTO: "{c.motto.toUpperCase()}"</span>
-                  <span className="mono text-dim" style={{ fontSize: 10 }}>CMD-0{i+1}</span>
-                </div>
-              </div>
+              <ComponentBoxCard
+                key={i}
+                category={`HQ: ${c.hq.split(',')[0]}`}
+                actionLabel="Details >"
+                word1={c.word1}
+                word2={c.word2}
+                title={c.name}
+                description={`${c.desc} Motto: "${c.motto.toUpperCase()}"`}
+                badge={`CMD-0${i+1}`}
+                previewHeight={170}
+                duration={380}
+                stagger={34}
+                interval={2800 + i * 350}
+              />
             ))}
           </div>
         </div>
@@ -630,7 +1029,7 @@ function QRScanModal({ onClose, onScan }) {
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--ink-dim)', cursor: 'pointer', fontSize: 18 }}>✕</button>
         </div>
 
-        <div className="scanline" style={{ height: 220, margin: 20, border: '2px dashed var(--gold-dark)', borderRadius: 'var(--radius-xs)', background: '#040805', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+        <div className="scanline" style={{ height: 220, margin: 20, border: '2px dashed var(--gold-dark)', borderRadius: 'var(--radius-inner)', background: '#040805', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
           {step === "scanning" && (
             <div style={{ textAlign: 'center' }}>
               <div className="radar-ping" style={{ width: 14, height: 14, margin: '0 auto 12px' }}></div>
@@ -813,16 +1212,26 @@ function DDMSDashboardView({ user, personnel, posts, alerts, weapons }) {
 
   return (
     <div className="fade-in" style={{ display: 'grid', gap: 20 }}>
-      {/* Metric Cards */}
+      {/* Metric Cards with Natural Flipping Headings */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 16 }}>
         {[
-          { label: 'On Duty Now', val: onDuty, sub: `of ${personnel.length} soldiers assigned`, color: 'var(--gold-light)' },
-          { label: 'Standby / Available', val: available, sub: 'Immediate tasking reserve', color: 'var(--steel)' },
-          { label: 'Weapons Issued', val: issued, sub: `of ${weapons.length} registered weapons`, color: 'var(--army-green-bright)' },
-          { label: 'Active Alerts', val: alerts.length, sub: 'Requires guard officer review', color: 'var(--amber)' },
+          { label: 'On Duty Now', word1: 'DUTY', word2: 'ACTIVE', val: onDuty, sub: `of ${personnel.length} soldiers assigned`, color: 'var(--gold-light)' },
+          { label: 'Standby Reserve', word1: 'STANDBY', word2: 'READY', val: available, sub: 'Immediate tasking reserve', color: 'var(--steel)' },
+          { label: 'Weapons Issued', word1: 'WEAPONS', word2: 'ARMOURY', val: issued, sub: `of ${weapons.length} registered weapons`, color: 'var(--army-green-bright)' },
+          { label: 'Active Alerts', word1: 'ALERTS', word2: 'URGENT', val: alerts.length, sub: 'Requires guard officer review', color: 'var(--amber)' },
         ].map((s, i) => (
-          <div key={i} className="card hud-corner">
-            <div className="mono text-dim" style={{ fontSize: 10.5, letterSpacing: '.1em' }}>{s.label.toUpperCase()}</div>
+          <div key={i} className="card hud-corner" style={{ borderRadius: 'var(--radius-card)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="mono text-dim" style={{ fontSize: 10.5, letterSpacing: '.1em' }}>{s.label.toUpperCase()}</div>
+              <FlippingWordSwap
+                word1={s.word1}
+                word2={s.word2}
+                duration={350}
+                stagger={26}
+                interval={2500 + i * 400}
+                style={{ fontSize: 10.5, fontFamily: 'var(--font-mono)', color: 'var(--gold-light)', fontWeight: 700 }}
+              />
+            </div>
             <div className="disp" style={{ fontSize: 36, fontWeight: 800, margin: '6px 0 2px', color: s.color }}>{s.val}</div>
             <div className="mono text-dim" style={{ fontSize: 11 }}>{s.sub}</div>
           </div>
@@ -1027,7 +1436,7 @@ function DDMSPersonnelView({ personnel }) {
       <Panel title="Servicemen Roster & Rest Matrix" eyebrow="Unit Personnel">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
           {personnel.map((p, i) => (
-            <div key={i} className="card hud-corner" style={{ background: 'var(--bg-panel-2)' }}>
+            <div key={i} className="card hud-corner" style={{ background: 'var(--bg-panel-2)', borderRadius: 'var(--radius-inner)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink-bright)' }}>{p.name}</div>
@@ -1225,21 +1634,22 @@ function GallerySection({ onSelectImage }) {
 
         <div className="gallery-grid">
           {GALLERY_ITEMS.map(item => (
-            <div 
-              key={item.id} 
-              className="gallery-card hud-corner"
-              onClick={() => onSelectImage(item)}
-            >
-              <img src={item.img} alt={item.title} />
-              <div className="gallery-overlay">
-                <span className="gallery-tag">{item.tag}</span>
-                <h3 className="gallery-title">{item.title}</h3>
-                <p className="gallery-desc">{item.desc}</p>
-                <span className="mono text-gold" style={{ fontSize: 11, marginTop: 8, fontWeight: 600 }}>
-                  CLICK TO VIEW SPECIFICATIONS ➔
-                </span>
-              </div>
-            </div>
+            <ComponentBoxCard
+              key={item.id}
+              category={item.category}
+              actionLabel="Details >"
+              word1={item.word1}
+              word2={item.word2}
+              title={item.title}
+              description={item.desc}
+              image={item.img}
+              badge="Asset"
+              previewHeight={185}
+              duration={400}
+              stagger={32}
+              interval={3400 + item.id * 300}
+              onAction={() => onSelectImage(item)}
+            />
           ))}
         </div>
       </div>
@@ -1262,7 +1672,16 @@ function GalleryModal({ item, onClose }) {
           </button>
         </div>
         <div style={{ padding: 24 }}>
-          <span className="chip chip-gold" style={{ marginBottom: 8 }}>{item.tag}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <span className="chip chip-gold">{item.category}</span>
+            <FlippingWordSwap
+              word1={item.word1}
+              word2={item.word2}
+              duration={350}
+              stagger={28}
+              style={{ fontSize: 13, fontFamily: 'var(--font-mono)', color: 'var(--gold-light)', fontWeight: 700 }}
+            />
+          </div>
           <h3 className="disp" style={{ fontSize: 22, fontWeight: 800, color: 'var(--ink-bright)', marginTop: 4 }}>{item.title}</h3>
           <p style={{ fontSize: 14, color: 'var(--ink-dim)', marginTop: 8, lineHeight: 1.6 }}>{item.desc}</p>
           <div className="stenciled" style={{ margin: '16px 0' }}></div>
@@ -1293,8 +1712,17 @@ function NoticesSection() {
         </div>
 
         <div className="notices-grid">
-          <div className="card hud-corner">
-            <div className="eyebrow" style={{ marginBottom: 14 }}>HEADQUARTERS BULLETINS</div>
+          <div className="card hud-corner" style={{ borderRadius: 'var(--radius-card)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div className="eyebrow">HEADQUARTERS BULLETINS</div>
+              <FlippingWordSwap
+                word1="GAZETTE"
+                word2="ORDERS"
+                duration={350}
+                stagger={26}
+                style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--gold-light)', fontWeight: 700 }}
+              />
+            </div>
             <div>
               {NOTICES.map((n, i) => (
                 <div key={i} className="notice-item">
@@ -1317,7 +1745,7 @@ function NoticesSection() {
               </p>
             </div>
 
-            <div className="card hud-corner">
+            <div className="card hud-corner" style={{ borderRadius: 'var(--radius-card)' }}>
               <div className="eyebrow" style={{ marginBottom: 8 }}>JOIN INDIAN ARMY</div>
               <p style={{ fontSize: 13, color: 'var(--ink-dim)', lineHeight: 1.55 }}>
                 Opportunities for Officers (NDA, CDS, TGC, SSC) and Agniveers across all arms and services. Serve the nation with honour, dignity, and pride.
