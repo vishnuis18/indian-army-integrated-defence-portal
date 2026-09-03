@@ -1,6 +1,97 @@
 const { useState, useEffect, useMemo, useRef } = React;
 
 /* ==========================================================================
+   DEFENCE REST API CLIENT (LIVE NODE.JS / EXPRESS BACKEND SERVICE)
+   ========================================================================== */
+
+const API_BASE = (window.location.port === '5000') ? '/api' : 'http://localhost:5000/api';
+
+const DefenceAPI = {
+  async getTelemetry() {
+    const res = await fetch(`${API_BASE}/telemetry`);
+    if (!res.ok) throw new Error('Telemetry fetch failed');
+    return (await res.json()).data;
+  },
+  async getDashboardStats() {
+    const res = await fetch(`${API_BASE}/dashboard/stats`);
+    if (!res.ok) throw new Error('Dashboard stats fetch failed');
+    return (await res.json()).data;
+  },
+  async getManningChart() {
+    const res = await fetch(`${API_BASE}/dashboard/manning-chart`);
+    if (!res.ok) throw new Error('Manning chart fetch failed');
+    return (await res.json()).data;
+  },
+  async getAlerts() {
+    const res = await fetch(`${API_BASE}/dashboard/alerts`);
+    if (!res.ok) throw new Error('Alerts fetch failed');
+    return (await res.json()).data;
+  },
+  async getRoster() {
+    const res = await fetch(`${API_BASE}/roster`);
+    if (!res.ok) throw new Error('Roster fetch failed');
+    return (await res.json());
+  },
+  async getDutyHistory(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    const res = await fetch(`${API_BASE}/roster/history${qs ? '?' + qs : ''}`);
+    if (!res.ok) throw new Error('Duty history fetch failed');
+    return (await res.json()).data;
+  },
+  async assignRoster(payload) {
+    const res = await fetch(`${API_BASE}/roster/assign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Roster assign failed');
+    return (await res.json());
+  },
+  async getWeapons() {
+    const res = await fetch(`${API_BASE}/weapons`);
+    if (!res.ok) throw new Error('Weapons fetch failed');
+    return (await res.json()).data;
+  },
+  async issueWeapon(payload) {
+    const res = await fetch(`${API_BASE}/weapons/issue`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Weapon issue failed');
+    return (await res.json());
+  },
+  async getPersonnel() {
+    const res = await fetch(`${API_BASE}/personnel`);
+    if (!res.ok) throw new Error('Personnel fetch failed');
+    return (await res.json()).data;
+  },
+  async updatePersonnel(payload) {
+    const res = await fetch(`${API_BASE}/personnel/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Personnel status update failed');
+    return (await res.json());
+  },
+  async getReports() {
+    const res = await fetch(`${API_BASE}/reports`);
+    if (!res.ok) throw new Error('Reports fetch failed');
+    return (await res.json()).data;
+  },
+  async generateReport(payload) {
+    const res = await fetch(`${API_BASE}/reports/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Generate report failed');
+    return (await res.json());
+  }
+};
+
+/* ==========================================================================
    FLIPPING WORD SWAP COMPONENT (PERFECT NATURAL SPACING & SPELLING)
    ========================================================================== */
 
@@ -316,13 +407,17 @@ function ComponentBoxCard({
         <div className="component-box-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
             {icon && <span style={{ color: 'var(--gold-light)', flexShrink: 0 }}>{icon}</span>}
-            <span className="component-box-category">{category}</span>
+            <span className="component-box-category" style={{ color: '#d2e3d8', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>{category}</span>
           </div>
 
           <div className="component-box-header-right">
-            {badge && <span className="chip chip-gold" style={{ fontSize: 9.5, padding: '2px 7px' }}>{badge}</span>}
+            {badge && (
+              <span className="chip chip-gold" style={{ fontSize: 9.5, padding: '2px 7px', background: 'rgba(197, 160, 89, 0.22)', color: '#f0cf88', borderColor: 'rgba(197, 160, 89, 0.5)', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>
+                {badge}
+              </span>
+            )}
             {actionLabel && (
-              <span className="component-box-action">
+              <span className="component-box-action" style={{ color: '#dfba74', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>
                 {actionLabel}
               </span>
             )}
@@ -344,7 +439,8 @@ function ComponentBoxCard({
                 letterSpacing: "0.03em",
                 textTransform: "uppercase",
                 fontFamily: "var(--font-display)",
-                color: "var(--ink-bright)",
+                color: "#ffffff",
+                textShadow: "0 0 24px rgba(223, 186, 116, 0.45), 0 2px 10px rgba(0, 0, 0, 0.95)",
               }}
             />
           ) : children}
@@ -590,23 +686,13 @@ function Panel({ title, eyebrow, children, right, className = "" }) {
    TOPBAR COMPONENT (LIVE CLOCK & DEFCON READINESS)
    ========================================================================== */
 
-function TopBar() {
-  const [timeStr, setTimeStr] = useState("");
+function TopBar({ telemetry }) {
   const [zuluMode, setZuluMode] = useState(false);
 
-  useEffect(() => {
-    const updateTime = () => {
-      const d = new Date();
-      if (zuluMode) {
-        setTimeStr(d.toUTCString().replace("GMT", "ZULU (UTC)"));
-      } else {
-        setTimeStr(d.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour12: false }) + " IST · " + d.toDateString().toUpperCase());
-      }
-    };
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
-  }, [zuluMode]);
+  // Time is derived live from the telemetry backend or fallback
+  const displayTime = zuluMode 
+    ? (telemetry?.zuluTime ? `${telemetry.zuluTime} ZULU (UTC)` : new Date().toUTCString())
+    : (telemetry?.istTime && telemetry?.istDate ? `${telemetry.istTime} · ${telemetry.istDate}` : `${new Date().toLocaleTimeString("en-IN")} IST`);
 
   return (
     <div className="topbar">
@@ -617,18 +703,26 @@ function TopBar() {
         <span style={{ color: 'var(--line-strong)' }}>|</span>
         <span>GOVERNMENT OF INDIA</span>
         <span style={{ color: 'var(--line-strong)' }}>|</span>
-        <span className="text-gold">READINESS: DEFCON 4 NORMAL READY</span>
+        <span className="text-gold">{telemetry?.defconLevel || "READINESS: DEFCON 4 NORMAL READY"}</span>
       </div>
       <div className="topbar-right">
         <span 
           onClick={() => setZuluMode(!zuluMode)} 
           title="Click to toggle IST / ZULU (UTC)"
-          style={{ cursor: 'pointer', color: 'var(--ink-dim)' }}
+          style={{ cursor: 'pointer', color: 'var(--ink)' }}
         >
-          ⏱ {timeStr}
+          ⏱ {displayTime}
         </span>
         <span style={{ color: 'var(--line-strong)' }}>|</span>
-        <span>SECURE NODE: DEL-09-TACTICAL</span>
+        <span>SECURE NODE: {telemetry?.secureNode || "DEL-09-TACTICAL"}</span>
+        <span style={{ color: 'var(--line-strong)' }}>|</span>
+        <span 
+          className={`chip ${telemetry?.connected ? 'chip-duty' : 'chip-danger'}`}
+          style={{ fontSize: 9.5, padding: '2px 7px', letterSpacing: '0.04em' }}
+          title={telemetry?.connected ? `Connected to Node.js/Express REST server (${telemetry.pingMs}ms)` : 'Backend server offline'}
+        >
+          ● {telemetry?.connected ? `REST API: ${telemetry.pingMs}ms` : 'REST API: OFFLINE'}
+        </span>
       </div>
     </div>
   );
@@ -638,7 +732,7 @@ function TopBar() {
    HEADER / NAVBAR COMPONENT
    ========================================================================== */
 
-function Navbar({ activeSection, onNavigate, onTogglePortal, portalMode, theme, onToggleTheme }) {
+function Navbar({ activeSection, onNavigate, onTogglePortal, portalMode, theme, onToggleTheme, telemetry }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -665,7 +759,7 @@ function Navbar({ activeSection, onNavigate, onTogglePortal, portalMode, theme, 
 
   return (
     <header className="site-header">
-      <TopBar />
+      <TopBar telemetry={telemetry} />
       <nav className={`navbar ${scrolled ? 'scrolled' : ''}`}>
         {/* Brand Area */}
         <div className="brand-area" onClick={() => handleNavClick('hero')}>
@@ -706,9 +800,9 @@ function Navbar({ activeSection, onNavigate, onTogglePortal, portalMode, theme, 
           <button 
             className="theme-toggle-btn"
             onClick={onToggleTheme}
-            title="Switch theme"
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
-            {theme === 'dark' ? '☾ DARK' : '☀ LIGHT'}
+            {theme === 'dark' ? '☀ LIGHT MODE' : '☾ DARK MODE'}
           </button>
 
           <button 
@@ -762,7 +856,7 @@ function Navbar({ activeSection, onNavigate, onTogglePortal, portalMode, theme, 
    HERO SECTION
    ========================================================================== */
 
-function HeroSection({ onExplore, onOpenDDMS }) {
+function HeroSection({ onExplore, onOpenDDMS, telemetry }) {
   return (
     <section id="hero" className="hero-section">
       <div className="hero-bg-media">
@@ -773,10 +867,10 @@ function HeroSection({ onExplore, onOpenDDMS }) {
       <div className="hero-container">
         <div className="hero-content">
           <div className="hero-badges-row">
-            <span className="chip chip-gold">
+            <span className="chip chip-gold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
               <span className="radar-ping"></span> DEFENCE COMMAND PORTAL
             </span>
-            <span className="chip" style={{ background: 'rgba(41,68,48,0.5)', color: 'var(--ink-bright)', borderColor: 'var(--line-light)' }}>
+            <span className="chip" style={{ background: 'rgba(25, 48, 30, 0.85)', color: '#ffffff', borderColor: 'rgba(197, 160, 89, 0.45)', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>
               ESTD. 1895 // SIKH, GORKHA, PARA, GRENADIERS, ARMOURED
             </span>
           </div>
@@ -805,35 +899,44 @@ function HeroSection({ onExplore, onOpenDDMS }) {
         </div>
 
         {/* Telemetry Live HUD (Enlarged & Prominent) */}
-        <div className="hero-telemetry-card scanline">
+        <div className="hero-telemetry-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12, borderBottom: '1px solid var(--line)' }}>
-            <span className="eyebrow">COMMAND TELEMETRY</span>
-            <span className="chip chip-duty">LIVE SYSTEM</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="eyebrow">COMMAND TELEMETRY</span>
+              <span className="radar-ping" style={{ width: 6, height: 6 }}></span>
+            </div>
+            <span className={`chip ${telemetry?.connected ? 'chip-duty' : 'chip-danger'}`}>
+              {telemetry?.connected ? 'LIVE REST STREAM' : 'OFFLINE (CACHED)'}
+            </span>
           </div>
 
           <div className="telemetry-grid">
             <div className="telemetry-item">
               <div className="telemetry-label">THEATRE COMMANDS</div>
-              <div className="telemetry-val">7</div>
-              <div className="telemetry-sub">Northern to Southern</div>
+              <div className="telemetry-val">{telemetry?.theatreCommands ?? 7}</div>
+              <div className="telemetry-sub">{telemetry?.theatreCoverage ?? "Northern to Southern"}</div>
             </div>
 
             <div className="telemetry-item">
               <div className="telemetry-label">READINESS STATUS</div>
-              <div className="telemetry-val" style={{ color: 'var(--success)' }}>100%</div>
-              <div className="telemetry-sub">All Formations Active</div>
+              <div className="telemetry-val" style={{ color: 'var(--success)' }}>
+                {telemetry?.readinessStatus ?? "100%"}
+              </div>
+              <div className="telemetry-sub">{telemetry?.readinessNote ?? "All Formations Active"}</div>
             </div>
 
             <div className="telemetry-item">
               <div className="telemetry-label">DUTY POST MANNING</div>
-              <div className="telemetry-val">10 / 12</div>
-              <div className="telemetry-sub">Maintained via DDMS</div>
+              <div className="telemetry-val">{telemetry?.postManningRatio ?? "10 / 12"}</div>
+              <div className="telemetry-sub">{telemetry?.postManningNote ?? "Maintained via DDMS"}</div>
             </div>
 
             <div className="telemetry-item">
               <div className="telemetry-label">ENCRYPTION PROTOCOL</div>
-              <div className="telemetry-val" style={{ fontSize: '1.4rem', color: 'var(--steel)' }}>256-BIT SHA</div>
-              <div className="telemetry-sub">Restricted Defence Node</div>
+              <div className="telemetry-val" style={{ fontSize: '1.4rem', color: 'var(--steel)' }}>
+                {telemetry?.encryptionProtocol ?? "256-BIT SHA"}
+              </div>
+              <div className="telemetry-sub">{telemetry?.encryptionNode ?? "Restricted Defence Node"}</div>
             </div>
           </div>
         </div>
@@ -1288,7 +1391,432 @@ function DDMSDashboardView({ user, personnel, posts, alerts, weapons }) {
   );
 }
 
-function DDMSRosterView({ personnel, posts }) {
+/* ==========================================================================
+   OFFICIAL INDIAN ARMY PDF DOCUMENT GENERATOR & PRINT DISPATCHER
+   ========================================================================== */
+
+function generateDutyReportPDF(records, filterDate = "ALL", adminUser = "Col R. S. Rathore (Commanding Officer)") {
+  const printWindow = window.open('', '_blank', 'width=980,height=760');
+  if (!printWindow) {
+    alert("Pop-up blocked! Please allow pop-ups for this site to generate and download the official PDF muster roll.");
+    return;
+  }
+
+  const dateStr = filterDate === "ALL" ? new Date().toDateString().toUpperCase() : filterDate;
+  const hash = "SHA256-" + Array.from({ length: 12 }, () => Math.floor(Math.random() * 16).toString(16)).join('').toUpperCase();
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <title>INDIAN ARMY — Daily Duty Allocation & Guard Manning Muster Roll</title>
+      <style>
+        @page { size: A4 portrait; margin: 12mm 15mm; }
+        body { font-family: 'Times New Roman', Times, serif; color: #111; margin: 0; padding: 24px; font-size: 11.5px; line-height: 1.35; background: #fff; }
+        .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 14px; position: relative; }
+        .classification { font-weight: bold; color: #b00; letter-spacing: 2.5px; font-size: 11px; margin-bottom: 6px; }
+        .emblem-title { font-size: 16px; font-weight: bold; letter-spacing: 1.2px; text-transform: uppercase; margin: 0; }
+        .sub-header { font-size: 12.5px; font-weight: bold; margin-top: 3px; color: #222; }
+        .doc-title { font-size: 13.5px; font-weight: bold; margin-top: 6px; text-decoration: underline; letter-spacing: 0.5px; }
+        .meta-strip { display: flex; justify-content: space-between; font-size: 10.5px; margin-top: 10px; border-bottom: 1px dashed #777; padding-bottom: 6px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 10.5px; }
+        th, td { border: 1px solid #333; padding: 6px 7px; text-align: left; }
+        th { background: #f0f0f0; font-weight: bold; text-transform: uppercase; font-size: 10px; }
+        .status-badge { display: inline-block; padding: 2px 5px; font-size: 9px; font-weight: bold; border: 1px solid #333; border-radius: 2px; }
+        .footer-sig { margin-top: 34px; display: flex; justify-content: space-between; align-items: flex-end; page-break-inside: avoid; }
+        .sig-block { border-top: 1px solid #000; padding-top: 6px; width: 230px; text-align: center; font-size: 10.5px; }
+        .watermark { position: fixed; top: 38%; left: 10%; transform: rotate(-32deg); font-size: 60px; color: rgba(0,0,0,0.05); font-weight: bold; pointer-events: none; z-index: -1; }
+        .no-print { display: flex; justify-content: space-between; align-items: center; background: #1f3624; color: #fff; padding: 12px 18px; margin-bottom: 20px; border-radius: 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .btn-print { background: #c5a059; color: #0c140e; border: none; padding: 8px 18px; font-weight: bold; cursor: pointer; border-radius: 4px; font-size: 12px; }
+        .btn-print:hover { background: #dfba74; }
+        @media print {
+          .no-print { display: none !important; }
+          body { padding: 0; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="watermark">RESTRICTED // DEFENCE OFFICIAL</div>
+      <div class="no-print">
+        <div>
+          <strong style="color: #dfba74;">INDIAN ARMY DDMS OFFICIAL MUSTER ROLL</strong> — Ready for PDF Download or Direct Print
+        </div>
+        <button class="btn-print" onclick="window.print()">⬇ SAVE / PRINT AS PDF</button>
+      </div>
+
+      <div class="header">
+        <div class="classification">RESTRICTED // FOR OFFICIAL ARMED FORCES USE ONLY</div>
+        <div class="emblem-title">INTEGRATED HEADQUARTERS OF MINISTRY OF DEFENCE (ARMY)</div>
+        <div class="sub-header">DIRECTORATE GENERAL OF OPERATIONAL LOGISTICS & FIELD COMMAND</div>
+        <div class="doc-title">DAILY GUARD DUTY & STATION MANNING MUSTER ROLL (FORM IA-2026/GSRO)</div>
+        <div class="meta-strip">
+          <span><strong>DATE:</strong> ${dateStr}</span>
+          <span><strong>FORMATION:</strong> 2 GRENADIERS / NORTHERN THEATRE</span>
+          <span><strong>DEFCON:</strong> 4 NORMAL READY</span>
+          <span><strong>DISPATCH REF:</strong> DDMS-OPS/${dateStr.replace(/[^a-zA-Z0-9]/g, '')}/HQ</span>
+        </div>
+      </div>
+
+      <p style="margin: 0 0 10px; font-size: 11px;">
+        Pursuant to Section Orders and Field Standing Regulations, the undermentioned military personnel have been gazetted and deployed to designated tactical guard stations and sentry posts for the stated duty duration:
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 25px; text-align: center;">SR.</th>
+            <th>DATE</th>
+            <th>GUARD POST / STATION</th>
+            <th>ARMY NO. & RANK</th>
+            <th>SOLDIER NAME</th>
+            <th>REGIMENT / UNIT</th>
+            <th>SHIFT WINDOW</th>
+            <th>STATUS</th>
+            <th>AUTHORIZED BY</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${records.map((r, i) => `
+            <tr>
+              <td style="text-align: center;">${i + 1}</td>
+              <td style="font-family: monospace;">${r.date || dateStr}</td>
+              <td><strong>${r.post}</strong></td>
+              <td style="font-family: monospace;">${r.armyNo || '—'} (${r.rank || 'Hav'})</td>
+              <td><strong>${r.name || r.personnel || '—'}</strong></td>
+              <td>${r.unit || '2 GRENADIERS'}</td>
+              <td style="font-family: monospace;">${r.shift}</td>
+              <td><span class="status-badge">${r.status || 'DEPLOYED'}</span></td>
+              <td style="font-size: 9.5px; color: #333;">${r.authorizedBy || adminUser}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+
+      <div class="footer-sig">
+        <div>
+          <div style="font-size: 9.5px; color: #555; line-height: 1.5;">
+            <strong>Cryptographic Ledger Hash:</strong> <span style="font-family: monospace;">${hash}</span><br>
+            <strong>Restricted Terminal Node:</strong> DEL-09-TACTICAL<br>
+            <strong>System Registry:</strong> Automated DDMS Operational Roster Engine
+          </div>
+        </div>
+        <div class="sig-block">
+          <strong>${adminUser}</strong><br>
+          Commanding Officer / Adjutant<br>
+          Integrated Defence Guard Operations
+        </div>
+      </div>
+
+      <script>
+        window.onload = function() {
+          setTimeout(function() { window.print(); }, 400);
+        };
+      </script>
+    </body>
+    </html>
+  `;
+
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+}
+
+/* ==========================================================================
+   ADMIN INTERACTIVE DUTY ASSIGNMENT MODAL
+   ========================================================================== */
+
+function AdminAssignDutyModal({ isOpen, onClose, personnel, posts, onDutyAssigned, adminUser }) {
+  if (!isOpen) return null;
+
+  const [soldier, setSoldier] = useState(personnel[0] ? `${personnel[0].armyNo} ${personnel[0].name}` : "");
+  const [post, setPost] = useState(posts[0]?.name || "Main Gate");
+  const [shift, setShift] = useState("0600–1400");
+  const [dutyDate, setDutyDate] = useState(new Date().toISOString().substring(0, 10));
+  const [priority, setPriority] = useState("HIGH");
+  const [submitting, setSubmitting] = useState(false);
+  const [statusMsg, setStatusMsg] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setStatusMsg("");
+    try {
+      await onDutyAssigned({
+        shift,
+        post,
+        personnelName: soldier,
+        operator: adminUser,
+        date: dutyDate,
+        priority
+      });
+      setStatusMsg("SUCCESS: Guard Duty Order Gazetted to Backend Roster & History");
+      setTimeout(() => {
+        onClose();
+      }, 700);
+    } catch (err) {
+      setStatusMsg("ERROR: " + err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div 
+        className="modal-content hud-corner" 
+        onClick={e => e.stopPropagation()} 
+        style={{ maxWidth: 540, width: '92%', background: 'var(--bg-surface)', border: '1.5px solid var(--gold)', borderRadius: 'var(--radius-card)', padding: '26px' }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, borderBottom: '1px solid var(--line)', paddingBottom: 12 }}>
+          <div>
+            <div className="chip chip-gold" style={{ fontSize: 9.5, marginBottom: 4 }}>ADMIN COMMAND AUTHORITY</div>
+            <h3 style={{ margin: 0, fontSize: 18, color: 'var(--ink-bright)', fontFamily: 'var(--font-display)' }}>
+              ASSIGN / OVERRIDE GUARD DUTY
+            </h3>
+          </div>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--ink-dim)', fontSize: 20, cursor: 'pointer' }}>✕</button>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 15 }}>
+          <div>
+            <label className="mono" style={{ display: 'block', fontSize: 11, color: 'var(--gold-light)', marginBottom: 6 }}>
+              1. DATE OF DEPLOYMENT
+            </label>
+            <input 
+              type="date" 
+              value={dutyDate} 
+              onChange={e => setDutyDate(e.target.value)} 
+              required
+              className="mono"
+              style={{ width: '100%', padding: '10px 14px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)', fontSize: 13 }}
+            />
+          </div>
+
+          <div>
+            <label className="mono" style={{ display: 'block', fontSize: 11, color: 'var(--gold-light)', marginBottom: 6 }}>
+              2. SELECT SERVICEMAN (FROM MUSTER ROLL)
+            </label>
+            <select 
+              value={soldier} 
+              onChange={e => setSoldier(e.target.value)}
+              required
+              className="mono"
+              style={{ width: '100%', padding: '10px 14px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)', fontSize: 13 }}
+            >
+              {personnel.map(p => (
+                <option key={p.armyNo} value={`${p.armyNo} ${p.name}`}>
+                  {p.armyNo} — {p.rank} {p.name} ({p.unit}) [{p.status}]
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div>
+              <label className="mono" style={{ display: 'block', fontSize: 11, color: 'var(--gold-light)', marginBottom: 6 }}>
+                3. GUARD POST / SECTOR
+              </label>
+              <select 
+                value={post} 
+                onChange={e => setPost(e.target.value)}
+                required
+                className="mono"
+                style={{ width: '100%', padding: '10px 14px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)', fontSize: 13 }}
+              >
+                {posts.map(p => (
+                  <option key={p.id} value={p.name}>
+                    {p.name} ({p.id})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mono" style={{ display: 'block', fontSize: 11, color: 'var(--gold-light)', marginBottom: 6 }}>
+                4. SHIFT WINDOW
+              </label>
+              <select 
+                value={shift} 
+                onChange={e => setShift(e.target.value)}
+                required
+                className="mono"
+                style={{ width: '100%', padding: '10px 14px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)', fontSize: 13 }}
+              >
+                <option value="0600–1400">0600–1400 IST (Morning Shift)</option>
+                <option value="1400–2200">1400–2200 IST (Evening Shift)</option>
+                <option value="2200–0600">2200–0600 IST (Night Watch)</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ background: 'var(--bg-panel-2)', padding: '10px 14px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="mono" style={{ fontSize: 11, color: 'var(--ink-dim)' }}>COMMANDING OFFICER:</span>
+            <span className="mono text-gold" style={{ fontSize: 12, fontWeight: 700 }}>{adminUser}</span>
+          </div>
+
+          {statusMsg && (
+            <div className="mono" style={{ fontSize: 12, color: statusMsg.startsWith('ERROR') ? 'var(--danger)' : 'var(--success)', textAlign: 'center' }}>
+              {statusMsg}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
+            <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">CANCEL</button>
+            <button type="submit" disabled={submitting} className="btn btn-gold btn-sm" style={{ minWidth: 160 }}>
+              {submitting ? "DISPATCHING…" : "⚔️ CONFIRM DUTY ORDER"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ==========================================================================
+   DUTY HISTORY VIEW (WHO WORKED ON THIS DAY & IN WHICH POST)
+   ========================================================================== */
+
+function DDMSDutyHistoryView({ history = [], onAssignClick, onDownloadPDF, isAdmin, adminUser }) {
+  const [selectedDate, setSelectedDate] = useState("ALL");
+  const [selectedPost, setSelectedPost] = useState("ALL");
+  const [search, setSearch] = useState("");
+
+  const uniqueDates = ["ALL", ...new Set(history.map(h => h.date).filter(Boolean))];
+  const uniquePosts = ["ALL", ...new Set(history.map(h => h.post).filter(Boolean))];
+
+  const filtered = history.filter(item => {
+    const matchDate = selectedDate === "ALL" || item.date === selectedDate;
+    const matchPost = selectedPost === "ALL" || item.post.toLowerCase().includes(selectedPost.toLowerCase());
+    const matchSearch = (item.name && item.name.toLowerCase().includes(search.toLowerCase())) || 
+                        (item.armyNo && item.armyNo.toLowerCase().includes(search.toLowerCase())) ||
+                        (item.post && item.post.toLowerCase().includes(search.toLowerCase()));
+    return matchDate && matchPost && matchSearch;
+  });
+
+  return (
+    <div className="fade-in" style={{ display: 'grid', gap: 20 }}>
+      <Panel
+        title="Guard Duty Historical Deployment Ledger"
+        eyebrow="Chronological Duty Record // Who Worked When & Where"
+        right={
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button 
+              onClick={() => onDownloadPDF(filtered, selectedDate)} 
+              className="btn btn-secondary btn-sm"
+              title="Generate and download official formatted Indian Army PDF muster roll"
+            >
+              ⬇ DOWNLOAD PDF REPORT
+            </button>
+            {isAdmin && (
+              <button 
+                onClick={onAssignClick} 
+                className="btn btn-gold btn-sm"
+              >
+                ➕ ASSIGN NEW DUTY
+              </button>
+            )}
+          </div>
+        }
+      >
+        {/* Filter Controls Bar */}
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', paddingBottom: 16, borderBottom: '1px solid var(--line)', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="mono" style={{ fontSize: 11, color: 'var(--gold-light)' }}>DATE:</span>
+            <select
+              value={selectedDate}
+              onChange={e => setSelectedDate(e.target.value)}
+              className="mono"
+              style={{ background: 'var(--bg-base)', color: 'var(--ink)', border: '1px solid var(--line)', padding: '6px 10px', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
+            >
+              {uniqueDates.map(d => (
+                <option key={d} value={d}>{d === "ALL" ? "All Dates (Full Archive)" : d}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="mono" style={{ fontSize: 11, color: 'var(--gold-light)' }}>POST:</span>
+            <select
+              value={selectedPost}
+              onChange={e => setSelectedPost(e.target.value)}
+              className="mono"
+              style={{ background: 'var(--bg-base)', color: 'var(--ink)', border: '1px solid var(--line)', padding: '6px 10px', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
+            >
+              {uniquePosts.map(p => (
+                <option key={p} value={p}>{p === "ALL" ? "All Posts" : p}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <input 
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search Soldier Name, Army No, or Station…"
+              className="mono"
+              style={{ width: '100%', padding: '6px 12px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink)', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
+            />
+          </div>
+
+          <div className="mono text-dim" style={{ fontSize: 11 }}>
+            Showing <strong>{filtered.length}</strong> deployment records
+          </div>
+        </div>
+
+        {/* History Table */}
+        <div style={{ overflowX: 'auto' }}>
+          <table className="tactical-table">
+            <thead>
+              <tr>
+                <th>DATE</th>
+                <th>GUARD POST / STATION</th>
+                <th>SOLDIER NAME & NO.</th>
+                <th>RANK & UNIT</th>
+                <th>SHIFT WINDOW</th>
+                <th>STATUS</th>
+                <th>AUTHORIZED BY</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '30px 10px', color: 'var(--ink-dim)' }}>
+                    No historical deployment records match the selected date or post filters.
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((item, i) => (
+                  <tr key={item.id || i} className="board-row">
+                    <td className="mono text-gold" style={{ fontWeight: 600 }}>{item.date}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--ink-bright)' }}>{item.post}</td>
+                    <td>
+                      <div style={{ fontWeight: 600, color: 'var(--ink-bright)' }}>{item.name}</div>
+                      <div className="mono text-dim" style={{ fontSize: 11 }}>{item.armyNo}</div>
+                    </td>
+                    <td>
+                      <div className="mono">{item.rank}</div>
+                      <div className="mono text-dim" style={{ fontSize: 11 }}>{item.unit}</div>
+                    </td>
+                    <td className="mono">{item.shift}</td>
+                    <td>
+                      <span className={`chip ${item.status === 'COMPLETED' ? 'chip-duty' : item.status === 'ONGOING' ? 'chip-gold' : 'chip-duty'}`} style={{ fontSize: 10 }}>
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="mono text-dim" style={{ fontSize: 11 }}>{item.authorizedBy}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+function DDMSRosterView({ personnel, posts, onAssignClick, onDownloadPDF, isAdmin }) {
   const [filter, setFilter] = useState("ALL");
   const [search, setSearch] = useState("");
   const units = ["ALL", ...new Set(personnel.map(p => p.unit))];
@@ -1305,7 +1833,24 @@ function DDMSRosterView({ personnel, posts }) {
         title="Personnel Duty Master Roster" 
         eyebrow="Roster Registry"
         right={
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            {onDownloadPDF && (
+              <button 
+                onClick={() => onDownloadPDF(filtered)} 
+                className="btn btn-secondary btn-sm"
+                title="Download formatted official muster roll PDF"
+              >
+                ⬇ DOWNLOAD PDF
+              </button>
+            )}
+            {isAdmin && onAssignClick && (
+              <button 
+                onClick={onAssignClick} 
+                className="btn btn-gold btn-sm"
+              >
+                ➕ ASSIGN DUTY
+              </button>
+            )}
             <input 
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -1470,7 +2015,7 @@ function DDMSPersonnelView({ personnel }) {
   );
 }
 
-function DDMSReportsView() {
+function DDMSReportsView({ auditLogs = AUDIT_LOG, user }) {
   const [generating, setGenerating] = useState(null);
   const reports = [
     { id: 'duty', name: 'Master Duty Allocation Report (PDF)', desc: 'Official roster with shift rosters, sector duties, and officer sign-offs.' },
@@ -1478,12 +2023,21 @@ function DDMSReportsView() {
     { id: 'attendance', name: 'Personnel Attendance & Muster Roll (PDF)', desc: 'Muster roll summary covering active duty, leave authorizations, and rest cycles.' },
   ];
 
-  const handleDownload = (id) => {
+  const handleDownload = async (id) => {
     setGenerating(id);
+    try {
+      await DefenceAPI.generateReport({
+        action: `Generated official PDF download: ${id.toUpperCase()} report`,
+        operator: user || "COMMAND OPERATOR",
+        category: "REPORTS"
+      });
+    } catch (e) {
+      console.warn('Offline report generation notice:', e);
+    }
     setTimeout(() => {
       setGenerating(null);
-      alert(`Report generated successfully! (Simulated PDF download for ${id.toUpperCase()} report)`);
-    }, 1400);
+      alert(`Report generated & logged to backend! (Simulated PDF download for ${id.toUpperCase()} report)`);
+    }, 1200);
   };
 
   return (
@@ -1511,12 +2065,12 @@ function DDMSReportsView() {
 
       <Panel title="Cryptographic Shift Audit Log" eyebrow="Immutable Ledger">
         <div style={{ display: 'grid', gap: 0 }}>
-          {AUDIT_LOG.map((a, i) => (
+          {auditLogs.map((a, i) => (
             <div key={i} className="board-row" style={{ display: 'grid', gridTemplateColumns: '120px 150px 1fr 120px', gap: 14, padding: '12px 8px', alignItems: 'center' }}>
-              <span className="mono text-dim" style={{ fontSize: 11 }}>{a.ts}</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold-light)' }}>{a.event}</span>
-              <span style={{ fontSize: 13, color: 'var(--ink)' }}>{a.detail}</span>
-              <span className="mono text-dim" style={{ fontSize: 11, textAlign: 'right' }}>{a.by}</span>
+              <span className="mono text-dim" style={{ fontSize: 11 }}>{a.ts || a.time}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold-light)' }}>{a.event || a.category}</span>
+              <span style={{ fontSize: 13, color: 'var(--ink)' }}>{a.detail || a.action}</span>
+              <span className="mono text-dim" style={{ fontSize: 11, textAlign: 'right' }}>{a.by || a.operator}</span>
             </div>
           ))}
         </div>
@@ -1527,18 +2081,128 @@ function DDMSReportsView() {
 
 function DDMSCommandSuite({ user, onLogout }) {
   const [tab, setTab] = useState('dashboard');
+  const [role, setRole] = useState('ADMIN'); // 'ADMIN' (Commanding Officer) or 'OPERATOR' (Guard Commander)
+  const [adminUser, setAdminUser] = useState("Col R. S. Rathore (Commanding Officer)");
   const [personnel, setPersonnel] = useState(PERSONNEL);
   const [weapons, setWeapons] = useState(WEAPONS_INITIAL);
   const [alerts, setAlerts] = useState(ALERTS_INITIAL);
+  const [posts, setPosts] = useState(POSTS);
+  const [auditLogs, setAuditLogs] = useState(AUDIT_LOG);
+  const [dutyHistory, setDutyHistory] = useState([]);
+  const [showAssignModal, setShowAssignModal] = useState(false);
 
-  const handleScanReturn = () => {
-    setWeapons(prev => prev.map(w => w.serial === "INSAS-4472" ? { ...w, status: "IN ARMOURY", holder: "—" } : w));
-    setAlerts(prev => [{ level: "gold", text: "INSAS-4472 confirmed returned to Armoury via QR Scan", time: "Just now" }, ...prev]);
+  // Background Data Synchronization with Express REST Backend
+  useEffect(() => {
+    let mounted = true;
+
+    const syncDDMS = async () => {
+      try {
+        const [pData, wData, aData, rData, repData, hData] = await Promise.all([
+          DefenceAPI.getPersonnel().catch(() => null),
+          DefenceAPI.getWeapons().catch(() => null),
+          DefenceAPI.getAlerts().catch(() => null),
+          DefenceAPI.getRoster().catch(() => null),
+          DefenceAPI.getReports().catch(() => null),
+          DefenceAPI.getDutyHistory().catch(() => null)
+        ]);
+
+        if (!mounted) return;
+        if (pData) setPersonnel(pData);
+        if (wData) setWeapons(wData.map(w => ({
+          serial: w.serial,
+          type: w.type,
+          status: w.status === 'ISSUED' ? 'ISSUED' : 'IN ARMOURY',
+          holder: w.issuedTo || '—',
+          ammo: w.calibre || 'Standard NATO',
+          qr: `QR-${w.serial}`
+        })));
+        if (aData) setAlerts(aData.map(a => ({
+          level: a.severity === 'ALERT' ? 'danger' : a.severity === 'WARN' ? 'amber' : 'gold',
+          text: a.text,
+          time: a.time
+        })));
+        if (rData && rData.posts) setPosts(rData.posts);
+        if (repData) setAuditLogs(repData.map(rep => ({
+          ts: rep.time,
+          event: rep.category || "AUDIT",
+          detail: rep.action,
+          by: rep.operator || "HQ DESK"
+        })));
+        if (hData) setDutyHistory(hData);
+      } catch (err) {
+        console.warn('DDMS background sync notice:', err);
+      }
+    };
+
+    syncDDMS();
+    const interval = setInterval(syncDDMS, 4000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  const handleAdminAssignDuty = async (dutyData) => {
+    const res = await DefenceAPI.assignRoster(dutyData);
+    // Refresh all DDMS datasets from backend
+    const [hData, rData, aData, repData] = await Promise.all([
+      DefenceAPI.getDutyHistory().catch(() => null),
+      DefenceAPI.getRoster().catch(() => null),
+      DefenceAPI.getAlerts().catch(() => null),
+      DefenceAPI.getReports().catch(() => null)
+    ]);
+    if (hData) setDutyHistory(hData);
+    if (rData && rData.posts) setPosts(rData.posts);
+    if (aData) setAlerts(aData.map(a => ({
+      level: a.severity === 'ALERT' ? 'danger' : a.severity === 'WARN' ? 'amber' : 'gold',
+      text: a.text,
+      time: a.time
+    })));
+    if (repData) setAuditLogs(repData.map(rep => ({
+      ts: rep.time,
+      event: rep.category || "AUDIT",
+      detail: rep.action,
+      by: rep.operator || "HQ DESK"
+    })));
+    return res;
+  };
+
+  const handleScanReturn = async (weaponSerial = "WPN-7021") => {
+    try {
+      const res = await DefenceAPI.issueWeapon({
+        serial: weaponSerial,
+        soldierName: role === 'ADMIN' ? adminUser : user,
+        operator: role === 'ADMIN' ? adminUser : user
+      });
+      if (res && res.weapons) {
+        setWeapons(res.weapons.map(w => ({
+          serial: w.serial,
+          type: w.type,
+          status: w.status === 'ISSUED' ? 'ISSUED' : 'IN ARMOURY',
+          holder: w.issuedTo || '—',
+          ammo: w.calibre,
+          qr: `QR-${w.serial}`
+        })));
+      }
+      const updatedReports = await DefenceAPI.getReports();
+      if (updatedReports) {
+        setAuditLogs(updatedReports.map(rep => ({
+          ts: rep.time,
+          event: rep.category,
+          detail: rep.action,
+          by: rep.operator
+        })));
+      }
+    } catch (e) {
+      setWeapons(prev => prev.map(w => w.serial === "INSAS-4472" || w.serial === "WPN-7021" ? { ...w, status: w.status === "ISSUED" ? "IN ARMOURY" : "ISSUED", holder: user } : w));
+    }
+    setAlerts(prev => [{ level: "gold", text: `${weaponSerial} verified & logged via QR Scan to ${user}`, time: "Just now" }, ...prev]);
   };
 
   const navTabs = [
     { id: 'dashboard', label: 'Command Board' },
     { id: 'roster', label: 'Duty Roster' },
+    { id: 'history', label: 'Duty History' },
     { id: 'weapons', label: 'Weapons Registry' },
     { id: 'personnel', label: 'Personnel' },
     { id: 'reports', label: 'Reports & Logs' },
@@ -1546,14 +2210,24 @@ function DDMSCommandSuite({ user, onLogout }) {
 
   return (
     <div className="ddms-wrapper hud-corner fade-in">
-      {/* Top Status Strip */}
+      {/* Top Status Strip with Admin Role Switcher */}
       <div className="ddms-top-status-strip">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <span className="text-gold" style={{ fontWeight: 700 }}>DDMS COMMAND DESK</span>
           <span style={{ color: 'var(--line-strong)' }}>|</span>
-          <span style={{ color: 'var(--ink-dim)' }}>AUTHENTICATED OPERATOR: {user}</span>
+          <span style={{ color: 'var(--ink-dim)' }}>
+            OPERATOR: {role === 'ADMIN' ? adminUser : user}
+          </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <button 
+            onClick={() => setRole(r => r === 'ADMIN' ? 'OPERATOR' : 'ADMIN')}
+            className={`chip ${role === 'ADMIN' ? 'chip-gold' : 'chip-duty'}`}
+            style={{ cursor: 'pointer', border: '1px solid var(--gold)', fontWeight: 700 }}
+            title="Click to toggle between Admin (Full Override & Duty Assignment) and Operator mode"
+          >
+            {role === 'ADMIN' ? '🛡️ ADMIN OVERRIDE (ACTIVE)' : '👤 OPERATOR (RESTRICTED)'}
+          </button>
           <span className="chip chip-duty">NODE ACTIVE</span>
           <span className="chip chip-danger">{alerts.length} ALERTS</span>
         </div>
@@ -1580,7 +2254,7 @@ function DDMSCommandSuite({ user, onLogout }) {
           </nav>
 
           <div style={{ padding: 18, borderTop: '1px solid var(--line)' }}>
-            <div className="mono text-dim" style={{ fontSize: 11, marginBottom: 8 }}>{user} · 2 GRENADIERS</div>
+            <div className="mono text-dim" style={{ fontSize: 11, marginBottom: 8 }}>{role === 'ADMIN' ? 'HQ ADJUTANT / CO' : `${user} · 2 GRENADIERS`}</div>
             <button 
               onClick={onLogout}
               className="btn btn-ghost btn-sm"
@@ -1604,14 +2278,41 @@ function DDMSCommandSuite({ user, onLogout }) {
           </div>
 
           <div className="ddms-view-content">
-            {tab === 'dashboard' && <DDMSDashboardView user={user} personnel={personnel} posts={POSTS} alerts={alerts} weapons={weapons} />}
-            {tab === 'roster' && <DDMSRosterView personnel={personnel} posts={POSTS} />}
+            {tab === 'dashboard' && <DDMSDashboardView user={user} personnel={personnel} posts={posts} alerts={alerts} weapons={weapons} />}
+            {tab === 'roster' && (
+              <DDMSRosterView 
+                personnel={personnel} 
+                posts={posts} 
+                onAssignClick={() => setShowAssignModal(true)} 
+                onDownloadPDF={(recs) => generateDutyReportPDF(dutyHistory.length ? dutyHistory : recs, "ALL", adminUser)}
+                isAdmin={role === 'ADMIN'} 
+              />
+            )}
+            {tab === 'history' && (
+              <DDMSDutyHistoryView 
+                history={dutyHistory} 
+                onAssignClick={() => setShowAssignModal(true)} 
+                onDownloadPDF={(recs, date) => generateDutyReportPDF(recs, date, adminUser)} 
+                isAdmin={role === 'ADMIN'} 
+                adminUser={adminUser} 
+              />
+            )}
             {tab === 'weapons' && <DDMSWeaponsView weapons={weapons} onScanReturn={handleScanReturn} />}
             {tab === 'personnel' && <DDMSPersonnelView personnel={personnel} />}
-            {tab === 'reports' && <DDMSReportsView />}
+            {tab === 'reports' && <DDMSReportsView auditLogs={auditLogs} user={role === 'ADMIN' ? adminUser : user} />}
           </div>
         </div>
       </div>
+
+      {/* Admin Duty Assignment Modal */}
+      <AdminAssignDutyModal
+        isOpen={showAssignModal}
+        onClose={() => setShowAssignModal(false)}
+        personnel={personnel}
+        posts={posts}
+        onDutyAssigned={handleAdminAssignDuty}
+        adminUser={adminUser}
+      />
     </div>
   );
 }
@@ -1848,9 +2549,59 @@ function App() {
   const [user, setUser] = useState("JC-118820P Hav Rawat, V.");
   const [selectedGalleryItem, setSelectedGalleryItem] = useState(null);
 
+  // Live Telemetry State connected to Express REST API
+  const [telemetry, setTelemetry] = useState({
+    theatreCommands: 7,
+    theatreCoverage: "Northern to Southern",
+    readinessStatus: "100%",
+    readinessNote: "All Formations Active",
+    postManningRatio: "10 / 12",
+    postManningNote: "Maintained via DDMS",
+    encryptionProtocol: "256-BIT SHA",
+    encryptionNode: "Restricted Defence Node",
+    defconLevel: "DEFCON 4 NORMAL READY",
+    secureNode: "DEL-09-TACTICAL",
+    istTime: new Date().toLocaleTimeString("en-IN") + " IST",
+    istDate: new Date().toDateString().toUpperCase(),
+    zuluTime: new Date().toISOString().substring(11, 19) + "Z",
+    connected: false,
+    pingMs: 0
+  });
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  // Telemetry Polling Loop (every 3 seconds)
+  useEffect(() => {
+    let mounted = true;
+
+    const pollTelemetry = async () => {
+      const t0 = performance.now();
+      try {
+        const data = await DefenceAPI.getTelemetry();
+        const ping = Math.max(1, Math.round(performance.now() - t0));
+        if (mounted && data) {
+          setTelemetry({
+            ...data,
+            connected: true,
+            pingMs: ping
+          });
+        }
+      } catch (err) {
+        if (mounted) {
+          setTelemetry(prev => ({ ...prev, connected: false }));
+        }
+      }
+    };
+
+    pollTelemetry();
+    const interval = setInterval(pollTelemetry, 3000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   const handleToggleTheme = () => {
     setTheme(t => t === 'dark' ? 'light' : 'dark');
@@ -1891,11 +2642,12 @@ function App() {
         portalMode={portalMode}
         theme={theme}
         onToggleTheme={handleToggleTheme}
+        telemetry={telemetry}
       />
 
       {/* Main Content Areas */}
       <main style={{ flex: 1 }}>
-        {/* 1. Hero Section */}
+        {/* 1. Hero Section with Live Telemetry */}
         <HeroSection
           onExplore={() => handleNavigate('about')}
           onOpenDDMS={() => {
@@ -1903,6 +2655,7 @@ function App() {
             const el = document.getElementById('ddms-section');
             if (el) el.scrollIntoView({ behavior: 'smooth' });
           }}
+          telemetry={telemetry}
         />
 
         {/* 2. Strategic Pillars */}

@@ -1,6 +1,462 @@
 const { useState, useEffect, useMemo, useRef } = React;
 
 /* ==========================================================================
+   DEFENCE REST API CLIENT (LIVE NODE.JS / EXPRESS BACKEND SERVICE)
+   ========================================================================== */
+
+const API_BASE = (window.location.port === '5000') ? '/api' : 'http://localhost:5000/api';
+
+const DefenceAPI = {
+  async getTelemetry() {
+    const res = await fetch(`${API_BASE}/telemetry`);
+    if (!res.ok) throw new Error('Telemetry fetch failed');
+    return (await res.json()).data;
+  },
+  async getDashboardStats() {
+    const res = await fetch(`${API_BASE}/dashboard/stats`);
+    if (!res.ok) throw new Error('Dashboard stats fetch failed');
+    return (await res.json()).data;
+  },
+  async getManningChart() {
+    const res = await fetch(`${API_BASE}/dashboard/manning-chart`);
+    if (!res.ok) throw new Error('Manning chart fetch failed');
+    return (await res.json()).data;
+  },
+  async getAlerts() {
+    const res = await fetch(`${API_BASE}/dashboard/alerts`);
+    if (!res.ok) throw new Error('Alerts fetch failed');
+    return (await res.json()).data;
+  },
+  async getRoster() {
+    const res = await fetch(`${API_BASE}/roster`);
+    if (!res.ok) throw new Error('Roster fetch failed');
+    return (await res.json());
+  },
+  async getDutyHistory(params = {}) {
+    const qs = new URLSearchParams(params).toString();
+    const res = await fetch(`${API_BASE}/roster/history${qs ? '?' + qs : ''}`);
+    if (!res.ok) throw new Error('Duty history fetch failed');
+    return (await res.json()).data;
+  },
+  async assignRoster(payload) {
+    const res = await fetch(`${API_BASE}/roster/assign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Roster assign failed');
+    return (await res.json());
+  },
+  async getWeapons() {
+    const res = await fetch(`${API_BASE}/weapons`);
+    if (!res.ok) throw new Error('Weapons fetch failed');
+    return (await res.json()).data;
+  },
+  async issueWeapon(payload) {
+    const res = await fetch(`${API_BASE}/weapons/issue`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Weapon issue failed');
+    return (await res.json());
+  },
+  async getPersonnel() {
+    const res = await fetch(`${API_BASE}/personnel`);
+    if (!res.ok) throw new Error('Personnel fetch failed');
+    return (await res.json()).data;
+  },
+  async updatePersonnel(payload) {
+    const res = await fetch(`${API_BASE}/personnel/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Personnel status update failed');
+    return (await res.json());
+  },
+  async getReports() {
+    const res = await fetch(`${API_BASE}/reports`);
+    if (!res.ok) throw new Error('Reports fetch failed');
+    return (await res.json()).data;
+  },
+  async generateReport(payload) {
+    const res = await fetch(`${API_BASE}/reports/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Generate report failed');
+    return (await res.json());
+  }
+};
+
+/* ==========================================================================
+   FLIPPING WORD SWAP COMPONENT (PERFECT NATURAL SPACING & SPELLING)
+   ========================================================================== */
+
+function FlippingWordSwap({
+  word1 = "MISSION",
+  word2 = "SECURITY",
+  duration = 420,
+  stagger = 32,
+  interval = 3200,
+  autoPlay = true,
+  className = "",
+  toClassName = "",
+  style = {},
+}) {
+  const [flipped, setFlipped] = useState(false);
+
+  useEffect(() => {
+    if (!autoPlay) return;
+    const timer = setInterval(() => {
+      setFlipped(prev => !prev);
+    }, interval);
+    return () => clearInterval(timer);
+  }, [autoPlay, interval]);
+
+  const chars1 = word1.split('');
+  const chars2 = word2.split('');
+
+  return (
+    <div
+      className={`flipping-word-swap-container ${className} ${flipped ? toClassName : ''}`}
+      style={{
+        position: 'relative',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        userSelect: 'none',
+        perspective: '1000px',
+        lineHeight: 1,
+        ...style
+      }}
+      onMouseEnter={() => setFlipped(prev => !prev)}
+      onClick={() => setFlipped(prev => !prev)}
+      title="Hover or tap to flip"
+    >
+      {/* Word 1 Layer - Rendered with natural font kerning & exact spelling */}
+      <span
+        className="flipping-word-swap-layer"
+        style={{
+          visibility: flipped ? 'hidden' : 'visible',
+          transition: `visibility 0s linear ${flipped ? (chars1.length * stagger + duration) : 0}ms`,
+        }}
+      >
+        {chars1.map((char, index) => {
+          const delay = flipped ? index * stagger : (chars1.length - 1 - index) * (stagger * 0.6);
+          return (
+            <span
+              key={index}
+              style={{
+                display: 'inline-block',
+                whiteSpace: 'pre',
+                transition: `transform ${duration}ms cubic-bezier(0.2, 0.9, 0.3, 1) ${delay}ms, opacity ${duration * 0.75}ms ease ${delay}ms`,
+                transform: flipped ? 'translateY(-110%) rotateX(85deg)' : 'translateY(0%) rotateX(0deg)',
+                opacity: flipped ? 0 : 1,
+                transformOrigin: '50% 100%',
+              }}
+            >
+              {char}
+            </span>
+          );
+        })}
+      </span>
+
+      {/* Word 2 Layer - Positioned over the same center with natural font kerning */}
+      <span
+        className="flipping-word-swap-layer"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          visibility: flipped ? 'visible' : 'hidden',
+          transition: `visibility 0s linear ${flipped ? 0 : (chars2.length * stagger + duration)}ms`,
+        }}
+      >
+        {chars2.map((char, index) => {
+          const delay = flipped ? index * stagger : (chars2.length - 1 - index) * (stagger * 0.6);
+          return (
+            <span
+              key={index}
+              style={{
+                display: 'inline-block',
+                whiteSpace: 'pre',
+                transition: `transform ${duration}ms cubic-bezier(0.2, 0.9, 0.3, 1) ${delay}ms, opacity ${duration * 0.75}ms ease ${delay}ms`,
+                transform: flipped ? 'translateY(0%) rotateX(0deg)' : 'translateY(110%) rotateX(-85deg)',
+                opacity: flipped ? 1 : 0,
+                transformOrigin: '50% 0%',
+              }}
+            >
+              {char}
+            </span>
+          );
+        })}
+      </span>
+    </div>
+  );
+}
+
+/* ==========================================================================
+   SCROLL BASED VELOCITY COMPONENT (SPEED-REACTIVE INFINITE VELOCITY SCROLL)
+   ========================================================================== */
+
+function ScrollBasedVelocity({
+  text = "STRATEGIC PILLARS OF DEFENCE",
+  default_velocity = 1.0,
+  numCopies = 5,
+  className = "",
+  style = {},
+}) {
+  const containerRef = useRef(null);
+  const track1Ref = useRef(null);
+  const posRef = useRef(0);
+  const velocityRef = useRef(default_velocity);
+  const targetVelocityRef = useRef(default_velocity);
+  const lastScrollY = useRef(window.scrollY);
+  const lastTime = useRef(performance.now());
+  const baseDirRef = useRef(1); // 1 = left, -1 = right
+  const rafId = useRef(null);
+
+  useEffect(() => {
+    let scrollTimeout = null;
+
+    const handleScroll = () => {
+      const now = performance.now();
+      const currentScrollY = window.scrollY;
+      const dt = Math.max(1, now - lastTime.current);
+      const dy = currentScrollY - lastScrollY.current;
+      
+      if (Math.abs(dy) > 0.5) {
+        const scrollSpeed = (Math.abs(dy) / dt) * 3.5;
+        const boost = Math.min(scrollSpeed, 5.0);
+        
+        // Scroll DOWN (dy > 0) => accelerate left (positive velocity)
+        // Scroll UP (dy < 0) => accelerate right (negative velocity)
+        if (dy > 0) {
+          baseDirRef.current = 1;
+          targetVelocityRef.current = default_velocity + boost;
+        } else if (dy < 0) {
+          baseDirRef.current = -1;
+          targetVelocityRef.current = -(default_velocity + boost);
+        }
+      }
+
+      lastScrollY.current = currentScrollY;
+      lastTime.current = now;
+
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        // Return to steady default speed in the active direction
+        targetVelocityRef.current = baseDirRef.current * default_velocity;
+      }, 120);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    let lastFrameTime = performance.now();
+
+    const animate = (now) => {
+      const delta = Math.min((now - lastFrameTime) / 16.67, 2.0);
+      lastFrameTime = now;
+
+      // Smooth lerp transition between velocities and directions
+      velocityRef.current += (targetVelocityRef.current - velocityRef.current) * 0.08;
+      
+      // Move continuous position
+      posRef.current -= velocityRef.current * delta;
+
+      if (containerRef.current && track1Ref.current) {
+        const setWidth = track1Ref.current.offsetWidth;
+        if (setWidth > 0) {
+          // Bidirectional seamless wrapping
+          while (posRef.current <= -setWidth * 2) {
+            posRef.current += setWidth;
+          }
+          while (posRef.current >= 0) {
+            posRef.current -= setWidth;
+          }
+          containerRef.current.style.transform = `translate3d(${posRef.current}px, 0, 0)`;
+        }
+      }
+
+      rafId.current = requestAnimationFrame(animate);
+    };
+
+    // Position in middle buffer set on mount
+    const timer = setTimeout(() => {
+      if (track1Ref.current) {
+        posRef.current = -track1Ref.current.offsetWidth;
+      }
+    }, 50);
+
+    rafId.current = requestAnimationFrame(animate);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (rafId.current) cancelAnimationFrame(rafId.current);
+      clearTimeout(scrollTimeout);
+      clearTimeout(timer);
+    };
+  }, [default_velocity]);
+
+  const copies = useMemo(() => Array.from({ length: numCopies }, (_, i) => i), [numCopies]);
+
+  return (
+    <div className="scroll-velocity-wrapper">
+      <div
+        ref={containerRef}
+        className={`scroll-velocity-track ${className}`}
+        style={{
+          display: 'inline-flex',
+          whiteSpace: 'nowrap',
+          willChange: 'transform',
+          ...style
+        }}
+      >
+        {/* Set 1 */}
+        <div ref={track1Ref} className="scroll-velocity-item">
+          {copies.map(i => (
+            <span key={`a-${i}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '36px' }}>
+              <span>{text}</span>
+              <span className="scroll-velocity-divider">✦</span>
+            </span>
+          ))}
+        </div>
+
+        {/* Set 2 (Middle Active Set) */}
+        <div className="scroll-velocity-item">
+          {copies.map(i => (
+            <span key={`b-${i}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '36px' }}>
+              <span>{text}</span>
+              <span className="scroll-velocity-divider">✦</span>
+            </span>
+          ))}
+        </div>
+
+        {/* Set 3 (Right Buffer for Bidirectional Runway) */}
+        <div className="scroll-velocity-item">
+          {copies.map(i => (
+            <span key={`c-${i}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '36px' }}>
+              <span>{text}</span>
+              <span className="scroll-velocity-divider">✦</span>
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ==========================================================================
+   COMPONENT BOX CARD TEMPLATE (CLEAN, NO OVERFLOW, PROPERLY ARRANGED)
+   ========================================================================== */
+
+function ComponentBoxCard({
+  category = "Defence Domain",
+  actionLabel = "Details >",
+  onAction,
+  word1 = "MISSION",
+  word2 = "SECURITY",
+  title = "Strategic Pillar",
+  description = "Operational framework of the Indian Army.",
+  previewBg = "#060d08",
+  previewHeight = 180,
+  fontSize,
+  image,
+  icon,
+  badge,
+  duration = 400,
+  stagger = 32,
+  interval = 3200,
+  className = "",
+  style = {},
+  children
+}) {
+  const maxWordLength = Math.max((word1 || "").length, (word2 || "").length);
+  const calculatedFontSize = fontSize || (
+    maxWordLength >= 11 ? "clamp(1.1rem, 1.8vw, 1.35rem)" :
+    maxWordLength >= 8 ? "clamp(1.2rem, 2.1vw, 1.55rem)" :
+    "clamp(1.3rem, 2.4vw, 1.75rem)"
+  );
+
+  return (
+    <div className={`component-box-card hud-corner ${className}`} style={style} onClick={onAction}>
+      {/* Top Inner Display Box */}
+      <div 
+        className="component-box-inner" 
+        style={{ 
+          background: previewBg,
+          minHeight: previewHeight,
+          position: 'relative',
+          overflow: 'hidden'
+        }}
+      >
+        {image && (
+          <div className="component-box-media-layer">
+            <img src={image} alt={title} />
+            <div className="component-box-media-overlay" />
+          </div>
+        )}
+        
+        {/* Top Header Row */}
+        <div className="component-box-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+            {icon && <span style={{ color: 'var(--gold-light)', flexShrink: 0 }}>{icon}</span>}
+            <span className="component-box-category" style={{ color: '#d2e3d8', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>{category}</span>
+          </div>
+
+          <div className="component-box-header-right">
+            {badge && (
+              <span className="chip chip-gold" style={{ fontSize: 9.5, padding: '2px 7px', background: 'rgba(197, 160, 89, 0.22)', color: '#f0cf88', borderColor: 'rgba(197, 160, 89, 0.5)', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>
+                {badge}
+              </span>
+            )}
+            {actionLabel && (
+              <span className="component-box-action" style={{ color: '#dfba74', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>
+                {actionLabel}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Center Display Area */}
+        <div className="component-box-center">
+          {word1 && word2 ? (
+            <FlippingWordSwap
+              word1={word1}
+              word2={word2}
+              duration={duration}
+              stagger={stagger}
+              interval={interval}
+              style={{
+                fontSize: calculatedFontSize,
+                fontWeight: 800,
+                letterSpacing: "0.03em",
+                textTransform: "uppercase",
+                fontFamily: "var(--font-display)",
+                color: "#ffffff",
+                textShadow: "0 0 24px rgba(223, 186, 116, 0.45), 0 2px 10px rgba(0, 0, 0, 0.95)",
+              }}
+            />
+          ) : children}
+        </div>
+      </div>
+
+      {/* Bottom Info Section */}
+      <div className="component-box-info">
+        <h3 className="component-box-title">{title}</h3>
+        <p className="component-box-desc">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ==========================================================================
    MOCK DATA & REPOSITORIES (PRESERVED & ENHANCED)
    ========================================================================== */
 
@@ -55,20 +511,22 @@ const AUDIT_LOG = [
 ];
 
 const COMMANDS_DATA = [
-  { name: "Northern Command", hq: "Udhampur, J&K", motto: "Always in Front", desc: "Guards the northern frontiers, Siachen Glacier, and LOC with supreme readiness in high altitude terrain." },
-  { name: "Western Command", hq: "Chandimandir, Haryana", motto: "Ever Victorious", desc: "Defends the northern plains and western sectors, maintaining rapid armoured and mechanised strike capability." },
-  { name: "Eastern Command", hq: "Fort William, Kolkata", motto: "Courage and Valour", desc: "Protects eastern borders, dense jungle corridors, and high-altitude Himalayan mountain passes." },
-  { name: "Southern Command", hq: "Pune, Maharashtra", motto: "Valour and Wisdom", desc: "Spans island territories, desert sectors, and southern peninsula defence with combined-arms agility." },
-  { name: "Central Command", hq: "Lucknow, Uttar Pradesh", motto: "Devotion to Duty", desc: "Oversees key strategic axes, logistical hubs, and operational reserves across central India." },
-  { name: "South Western Command", hq: "Jaipur, Rajasthan", motto: "Forever Victorious", desc: "Command specialized in desert warfare, mechanized strike formations, and rapid response deployment." },
-  { name: "ARTRAC", hq: "Shimla, Himachal Pradesh", motto: "Training for War", desc: "Army Training Command formulating military doctrine, advanced tactical concepts, and officer leadership." },
+  { name: "Northern Command", hq: "Udhampur, J&K", word1: "NORTHERN", word2: "VANGUARD", motto: "Always in Front", desc: "Guards northern frontiers, Siachen Glacier, and LOC with supreme high-altitude readiness." },
+  { name: "Western Command", hq: "Chandimandir, Haryana", word1: "WESTERN", word2: "STRIKE", motto: "Ever Victorious", desc: "Defends northern plains and western sectors with rapid armoured strike capability." },
+  { name: "Eastern Command", hq: "Fort William, Kolkata", word1: "EASTERN", word2: "DEFENCE", motto: "Courage and Valour", desc: "Protects eastern borders, dense jungle corridors, and Himalayan mountain passes." },
+  { name: "Southern Command", hq: "Pune, Maharashtra", word1: "SOUTHERN", word2: "SHIELD", motto: "Valour and Wisdom", desc: "Spans island territories, desert sectors, and southern peninsula defence." },
+  { name: "Central Command", hq: "Lucknow, Uttar Pradesh", word1: "CENTRAL", word2: "RESERVE", motto: "Devotion to Duty", desc: "Oversees strategic axes, logistical hubs, and operational reserves across central India." },
+  { name: "South Western Command", hq: "Jaipur, Rajasthan", word1: "DESERT", word2: "CORPS", motto: "Forever Victorious", desc: "Specialized in desert warfare, mechanized strike formations, and rapid response." },
+  { name: "ARTRAC", hq: "Shimla, Himachal Pradesh", word1: "DOCTRINE", word2: "TACTICS", motto: "Training for War", desc: "Army Training Command formulating military doctrine, tactics, and officer leadership." },
 ];
 
 const GALLERY_ITEMS = [
   {
     id: 1,
     title: "Mountain Warfare & High Altitude",
-    tag: "Northern Theatre // Siachen Axis",
+    category: "Northern Frontier",
+    word1: "SIACHEN",
+    word2: "HIMALAYAS",
     desc: "Indian Army troops conducting high-altitude reconnaissance across Himalayan ridges in sub-zero snow terrain.",
     img: "assets/images/mountain.png",
     specs: "Specialized cold-weather survival gear, mountaineering warfare kit, tactical SATCOM link."
@@ -76,7 +534,9 @@ const GALLERY_ITEMS = [
   {
     id: 2,
     title: "Armoured Strike Columns",
-    tag: "Western & South-Western Theatre",
+    category: "Western Sector",
+    word1: "ARMOURED",
+    word2: "TANKS",
     desc: "Main Battle Tanks maneuvering in battle formation across arid terrain during tactical readiness exercises.",
     img: "assets/images/armour.png",
     specs: "Thermal imaging fire control, dynamic reactive armour, indigenous weapon integration."
@@ -84,7 +544,9 @@ const GALLERY_ITEMS = [
   {
     id: 3,
     title: "Special Forces (PARA SF)",
-    tag: "Special Operations Wing",
+    category: "Special Forces",
+    word1: "AIRBORNE",
+    word2: "SPECIAL",
     desc: "Elite Para Commandos conducting airborne tactical insertion and counter-terrorism precision drills.",
     img: "assets/images/airborne.png",
     specs: "High-altitude freefall insertion, night-vision combat suites, suppressed assault weapons."
@@ -92,7 +554,9 @@ const GALLERY_ITEMS = [
   {
     id: 4,
     title: "C4ISR & Tactical Operations Centre",
-    tag: "Integrated Command Network",
+    category: "Command Network",
+    word1: "INTELLIGENCE",
+    word2: "SURVEILLANCE",
     desc: "Commanders and operations officers monitoring real-time telemetry, satellite feeds, and drone reconnaissance.",
     img: "assets/images/c4isr.png",
     specs: "Secure 256-bit encrypted mesh, multi-domain battlefield management, live asset tracking."
@@ -112,29 +576,23 @@ const NOTICES = [
 
 function ArmyEmblemSvg() {
   return (
-    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="50" r="46" stroke="#c5a059" strokeWidth="2.5" strokeDasharray="3 2" opacity="0.75" />
-      <circle cx="50" cy="50" r="41" stroke="#c5a059" strokeWidth="1.5" />
-      
-      {/* Crossed Swords */}
-      <path d="M28 72 L72 28 M30 74 L24 80 M70 26 L76 20" stroke="#f0f4f1" strokeWidth="3" strokeLinecap="round" />
-      <path d="M72 72 L28 28 M70 74 L76 80 M30 26 L24 20" stroke="#f0f4f1" strokeWidth="3" strokeLinecap="round" />
-      <circle cx="50" cy="50" r="7" fill="#294430" stroke="#c5a059" strokeWidth="2" />
-      
-      {/* Ashoka Lion Motif Pillar Top */}
-      <path d="M46 36 L54 36 L53 45 L47 45 Z" fill="#c5a059" />
-      <rect x="44" y="32" width="12" height="4" rx="1" fill="#dfba74" />
-      
-      {/* Golden Star & Laurel */}
-      <path d="M50 20 L52 24 L56 25 L53 28 L54 32 L50 30 L46 32 L47 28 L44 25 L48 24 Z" fill="#c5a059" />
-      <path d="M35 62 C40 68, 60 68, 65 62" stroke="#c5a059" strokeWidth="2" strokeLinecap="round" />
-    </svg>
+    <img 
+      src="assets/images/army_emblem.png" 
+      alt="Indian Army Emblem" 
+      style={{
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover',
+        borderRadius: '50%',
+        display: 'block'
+      }} 
+    />
   );
 }
 
 function IconShield() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
     </svg>
   );
@@ -142,7 +600,7 @@ function IconShield() {
 
 function IconRadar() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
       <path d="M12 12m-5 0a5 5 0 1 0 10 0a5 5 0 1 0 -10 0" />
       <path d="M12 3v9l6 6" />
@@ -152,7 +610,7 @@ function IconRadar() {
 
 function IconCpu() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="4" y="4" width="16" height="16" rx="2"/>
       <rect x="9" y="9" width="6" height="6"/>
       <path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/>
@@ -162,7 +620,7 @@ function IconCpu() {
 
 function IconUsers() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
       <circle cx="9" cy="7" r="4"/>
       <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
@@ -228,23 +686,13 @@ function Panel({ title, eyebrow, children, right, className = "" }) {
    TOPBAR COMPONENT (LIVE CLOCK & DEFCON READINESS)
    ========================================================================== */
 
-function TopBar() {
-  const [timeStr, setTimeStr] = useState("");
+function TopBar({ telemetry }) {
   const [zuluMode, setZuluMode] = useState(false);
 
-  useEffect(() => {
-    const updateTime = () => {
-      const d = new Date();
-      if (zuluMode) {
-        setTimeStr(d.toUTCString().replace("GMT", "ZULU (UTC)"));
-      } else {
-        setTimeStr(d.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour12: false }) + " IST · " + d.toDateString().toUpperCase());
-      }
-    };
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
-  }, [zuluMode]);
+  // Time is derived live from the telemetry backend or fallback
+  const displayTime = zuluMode 
+    ? (telemetry?.zuluTime ? `${telemetry.zuluTime} ZULU (UTC)` : new Date().toUTCString())
+    : (telemetry?.istTime && telemetry?.istDate ? `${telemetry.istTime} · ${telemetry.istDate}` : `${new Date().toLocaleTimeString("en-IN")} IST`);
 
   return (
     <div className="topbar">
@@ -255,18 +703,26 @@ function TopBar() {
         <span style={{ color: 'var(--line-strong)' }}>|</span>
         <span>GOVERNMENT OF INDIA</span>
         <span style={{ color: 'var(--line-strong)' }}>|</span>
-        <span className="text-gold">READINESS: DEFCON 4 NORMAL READY</span>
+        <span className="text-gold">{telemetry?.defconLevel || "READINESS: DEFCON 4 NORMAL READY"}</span>
       </div>
       <div className="topbar-right">
         <span 
           onClick={() => setZuluMode(!zuluMode)} 
           title="Click to toggle IST / ZULU (UTC)"
-          style={{ cursor: 'pointer', color: 'var(--ink-dim)' }}
+          style={{ cursor: 'pointer', color: 'var(--ink)' }}
         >
-          ⏱ {timeStr}
+          ⏱ {displayTime}
         </span>
         <span style={{ color: 'var(--line-strong)' }}>|</span>
-        <span>SECURE NODE: DEL-09-TACTICAL</span>
+        <span>SECURE NODE: {telemetry?.secureNode || "DEL-09-TACTICAL"}</span>
+        <span style={{ color: 'var(--line-strong)' }}>|</span>
+        <span 
+          className={`chip ${telemetry?.connected ? 'chip-duty' : 'chip-danger'}`}
+          style={{ fontSize: 9.5, padding: '2px 7px', letterSpacing: '0.04em' }}
+          title={telemetry?.connected ? `Connected to Node.js/Express REST server (${telemetry.pingMs}ms)` : 'Backend server offline'}
+        >
+          ● {telemetry?.connected ? `REST API: ${telemetry.pingMs}ms` : 'REST API: OFFLINE'}
+        </span>
       </div>
     </div>
   );
@@ -276,7 +732,7 @@ function TopBar() {
    HEADER / NAVBAR COMPONENT
    ========================================================================== */
 
-function Navbar({ activeSection, onNavigate, onTogglePortal, portalMode, theme, onToggleTheme }) {
+function Navbar({ activeSection, onNavigate, onTogglePortal, portalMode, theme, onToggleTheme, telemetry }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -303,7 +759,7 @@ function Navbar({ activeSection, onNavigate, onTogglePortal, portalMode, theme, 
 
   return (
     <header className="site-header">
-      <TopBar />
+      <TopBar telemetry={telemetry} />
       <nav className={`navbar ${scrolled ? 'scrolled' : ''}`}>
         {/* Brand Area */}
         <div className="brand-area" onClick={() => handleNavClick('hero')}>
@@ -344,9 +800,9 @@ function Navbar({ activeSection, onNavigate, onTogglePortal, portalMode, theme, 
           <button 
             className="theme-toggle-btn"
             onClick={onToggleTheme}
-            title="Switch theme"
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
-            {theme === 'dark' ? '☾ DARK' : '☀ LIGHT'}
+            {theme === 'dark' ? '☀ LIGHT MODE' : '☾ DARK MODE'}
           </button>
 
           <button 
@@ -400,7 +856,7 @@ function Navbar({ activeSection, onNavigate, onTogglePortal, portalMode, theme, 
    HERO SECTION
    ========================================================================== */
 
-function HeroSection({ onExplore, onOpenDDMS }) {
+function HeroSection({ onExplore, onOpenDDMS, telemetry }) {
   return (
     <section id="hero" className="hero-section">
       <div className="hero-bg-media">
@@ -411,18 +867,18 @@ function HeroSection({ onExplore, onOpenDDMS }) {
       <div className="hero-container">
         <div className="hero-content">
           <div className="hero-badges-row">
-            <span className="chip chip-gold">
+            <span className="chip chip-gold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
               <span className="radar-ping"></span> DEFENCE COMMAND PORTAL
             </span>
-            <span className="chip" style={{ background: 'rgba(41,68,48,0.5)', color: 'var(--ink-bright)', borderColor: 'var(--line-light)' }}>
+            <span className="chip" style={{ background: 'rgba(25, 48, 30, 0.85)', color: '#ffffff', borderColor: 'rgba(197, 160, 89, 0.45)', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>
               ESTD. 1895 // SIKH, GORKHA, PARA, GRENADIERS, ARMOURED
             </span>
           </div>
 
-          <div className="hero-title heading-hero">
+          <h1 className="hero-title heading-hero">
             <span>SERVICE BEFORE</span>
             <span className="title-accent">SELF</span>
-          </div>
+          </h1>
 
           <div className="hero-sanskrit">
             सेवा परमो धर्म: // SEVA PARAMO DHARMA
@@ -442,36 +898,45 @@ function HeroSection({ onExplore, onOpenDDMS }) {
           </div>
         </div>
 
-        {/* Telemetry Live HUD */}
-        <div className="hero-telemetry-card hud-corner scanline">
+        {/* Telemetry Live HUD (Enlarged & Prominent) */}
+        <div className="hero-telemetry-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12, borderBottom: '1px solid var(--line)' }}>
-            <span className="eyebrow">COMMAND TELEMETRY</span>
-            <span className="chip chip-duty">LIVE SYSTEM</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="eyebrow">COMMAND TELEMETRY</span>
+              <span className="radar-ping" style={{ width: 6, height: 6 }}></span>
+            </div>
+            <span className={`chip ${telemetry?.connected ? 'chip-duty' : 'chip-danger'}`}>
+              {telemetry?.connected ? 'LIVE REST STREAM' : 'OFFLINE (CACHED)'}
+            </span>
           </div>
 
           <div className="telemetry-grid">
             <div className="telemetry-item">
               <div className="telemetry-label">THEATRE COMMANDS</div>
-              <div className="telemetry-val">7</div>
-              <div className="telemetry-sub">Northern to Southern</div>
+              <div className="telemetry-val">{telemetry?.theatreCommands ?? 7}</div>
+              <div className="telemetry-sub">{telemetry?.theatreCoverage ?? "Northern to Southern"}</div>
             </div>
 
             <div className="telemetry-item">
               <div className="telemetry-label">READINESS STATUS</div>
-              <div className="telemetry-val" style={{ color: 'var(--success)' }}>100%</div>
-              <div className="telemetry-sub">All Formations Active</div>
+              <div className="telemetry-val" style={{ color: 'var(--success)' }}>
+                {telemetry?.readinessStatus ?? "100%"}
+              </div>
+              <div className="telemetry-sub">{telemetry?.readinessNote ?? "All Formations Active"}</div>
             </div>
 
             <div className="telemetry-item">
               <div className="telemetry-label">DUTY POST MANNING</div>
-              <div className="telemetry-val">10 / 12</div>
-              <div className="telemetry-sub">Maintained via DDMS</div>
+              <div className="telemetry-val">{telemetry?.postManningRatio ?? "10 / 12"}</div>
+              <div className="telemetry-sub">{telemetry?.postManningNote ?? "Maintained via DDMS"}</div>
             </div>
 
             <div className="telemetry-item">
               <div className="telemetry-label">ENCRYPTION PROTOCOL</div>
-              <div className="telemetry-val" style={{ fontSize: '1.25rem', color: 'var(--steel)' }}>256-BIT SHA</div>
-              <div className="telemetry-sub">Restricted Defence Node</div>
+              <div className="telemetry-val" style={{ fontSize: '1.4rem', color: 'var(--steel)' }}>
+                {telemetry?.encryptionProtocol ?? "256-BIT SHA"}
+              </div>
+              <div className="telemetry-sub">{telemetry?.encryptionNode ?? "Restricted Defence Node"}</div>
             </div>
           </div>
         </div>
@@ -487,45 +952,84 @@ function HeroSection({ onExplore, onOpenDDMS }) {
 function StrategicPillars() {
   const pillars = [
     {
+      category: "Territorial Defence",
+      word1: "MISSION",
+      word2: "SECURITY",
+      title: "Mission & Security",
+      desc: "Safeguarding territorial integrity across 15,000+ km of land borders through proactive mountain warfare posture and rapid deterrence.",
       icon: <IconShield />,
-      title: "MISSION & SECURITY",
-      desc: "Safeguarding territorial integrity across 15,000+ km of land borders. Deterring aggression through proactive forward posture, mountain warfare excellence, and rapid joint-force strike capabilities."
+      badge: "Doctrine"
     },
     {
+      category: "Military Ethos",
+      word1: "DISCIPLINE",
+      word2: "VALOUR",
+      title: "Discipline & Valour",
+      desc: "Forged in over a century of unparalleled valor, sacrifice, and supreme devotion. Upholding ethical chain-of-command integrity.",
       icon: <IconUsers />,
-      title: "DISCIPLINE & HERITAGE",
-      desc: "Forged in over a century of unparalleled valor, sacrifice, and supreme devotion. Upholding the highest standards of military ethics, rigorous conditioning, and selfless duty to the motherland."
+      badge: "Tradition"
     },
     {
+      category: "Tactical C4ISR",
+      word1: "TECHNOLOGY",
+      word2: "TACTICAL",
+      title: "Modernization & Tech",
+      desc: "Integrating indigenous drone surveillance networks, AI-assisted telemetry, automated QR logistics, and digital DDMS duty rosters.",
       icon: <IconCpu />,
-      title: "TECHNOLOGY & MODERNIZATION",
-      desc: "Integrating state-of-the-art C4ISR systems, indigenous drone surveillance networks, AI-assisted telemetry, automated QR logistics, and digital duty roster algorithms."
+      badge: "Next-Gen"
     },
     {
+      category: "Nation First",
+      word1: "VIGILANCE",
+      word2: "SERVICE",
+      title: "Vigilance & Service",
+      desc: "Providing round-the-clock humanitarian disaster relief (HADR), civil defense support, and leading global peacekeeping deployments.",
       icon: <IconRadar />,
-      title: "NATION BUILDING & SERVICE",
-      desc: "Providing round-the-clock humanitarian assistance, disaster relief (HADR), infrastructure in remote border frontiers, and leading global peacekeeping deployments under the UN mandate."
+      badge: "24/7 Vigil"
     },
   ];
 
   return (
     <section id="about" className="section">
       <div className="section-container">
-        <div className="section-header section-header-center">
+        <div className="section-header section-header-center" style={{ marginBottom: 38 }}>
           <span className="eyebrow">CORE FOUNDATIONS</span>
-          <h2 className="heading-section">STRATEGIC PILLARS OF DEFENCE</h2>
+          <div style={{ width: '100%', margin: '14px 0 10px' }}>
+            <ScrollBasedVelocity
+              text="STRATEGIC PILLARS OF DEFENCE"
+              default_velocity={1.0}
+              style={{
+                fontFamily: "var(--font-display)",
+                fontWeight: 800,
+                fontSize: "clamp(1.9rem, 3.8vw, 3rem)",
+                letterSpacing: "0.04em",
+                color: "var(--ink-bright)",
+                textTransform: "uppercase"
+              }}
+            />
+          </div>
           <p className="section-subtitle">
-            The values, doctrine, and technological framework empowering the Indian Army across every operational frontier.
+            Hover or tap any card to experience the interactive word swap. The values, doctrine, and tactical pillars of the Indian Army.
           </p>
         </div>
 
         <div className="pillars-grid">
           {pillars.map((p, idx) => (
-            <div key={idx} className="pillar-card hud-corner">
-              <div className="pillar-icon-box">{p.icon}</div>
-              <h3 className="pillar-title">{p.title}</h3>
-              <p className="pillar-desc">{p.desc}</p>
-            </div>
+            <ComponentBoxCard
+              key={idx}
+              category={p.category}
+              actionLabel="View >"
+              word1={p.word1}
+              word2={p.word2}
+              title={p.title}
+              description={p.desc}
+              icon={p.icon}
+              badge={p.badge}
+              previewHeight={175}
+              duration={400}
+              stagger={34}
+              interval={3000 + idx * 400}
+            />
           ))}
         </div>
       </div>
@@ -573,22 +1077,20 @@ function CommandsSection() {
 
           <div className="commands-grid">
             {COMMANDS_DATA.map((c, i) => (
-              <div key={i} className="command-card hud-corner">
-                <div>
-                  <div className="command-card-header">
-                    <div>
-                      <h3 className="command-name">{c.name}</h3>
-                      <div className="command-hq">HQ: {c.hq}</div>
-                    </div>
-                    <span className="chip chip-gold">Active Command</span>
-                  </div>
-                  <p className="command-desc">{c.desc}</p>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--line)', paddingTop: 12 }}>
-                  <span className="mono" style={{ fontSize: 11, color: 'var(--gold-light)' }}>MOTTO: "{c.motto.toUpperCase()}"</span>
-                  <span className="mono text-dim" style={{ fontSize: 10 }}>CMD-0{i+1}</span>
-                </div>
-              </div>
+              <ComponentBoxCard
+                key={i}
+                category={`HQ: ${c.hq.split(',')[0]}`}
+                actionLabel="Details >"
+                word1={c.word1}
+                word2={c.word2}
+                title={c.name}
+                description={`${c.desc} Motto: "${c.motto.toUpperCase()}"`}
+                badge={`CMD-0${i+1}`}
+                previewHeight={170}
+                duration={380}
+                stagger={34}
+                interval={2800 + i * 350}
+              />
             ))}
           </div>
         </div>
@@ -630,7 +1132,7 @@ function QRScanModal({ onClose, onScan }) {
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--ink-dim)', cursor: 'pointer', fontSize: 18 }}>✕</button>
         </div>
 
-        <div className="scanline" style={{ height: 220, margin: 20, border: '2px dashed var(--gold-dark)', borderRadius: 'var(--radius-xs)', background: '#040805', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+        <div className="scanline" style={{ height: 220, margin: 20, border: '2px dashed var(--gold-dark)', borderRadius: 'var(--radius-inner)', background: '#040805', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
           {step === "scanning" && (
             <div style={{ textAlign: 'center' }}>
               <div className="radar-ping" style={{ width: 14, height: 14, margin: '0 auto 12px' }}></div>
@@ -813,16 +1315,26 @@ function DDMSDashboardView({ user, personnel, posts, alerts, weapons }) {
 
   return (
     <div className="fade-in" style={{ display: 'grid', gap: 20 }}>
-      {/* Metric Cards */}
+      {/* Metric Cards with Natural Flipping Headings */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 16 }}>
         {[
-          { label: 'On Duty Now', val: onDuty, sub: `of ${personnel.length} soldiers assigned`, color: 'var(--gold-light)' },
-          { label: 'Standby / Available', val: available, sub: 'Immediate tasking reserve', color: 'var(--steel)' },
-          { label: 'Weapons Issued', val: issued, sub: `of ${weapons.length} registered weapons`, color: 'var(--army-green-bright)' },
-          { label: 'Active Alerts', val: alerts.length, sub: 'Requires guard officer review', color: 'var(--amber)' },
+          { label: 'On Duty Now', word1: 'DUTY', word2: 'ACTIVE', val: onDuty, sub: `of ${personnel.length} soldiers assigned`, color: 'var(--gold-light)' },
+          { label: 'Standby Reserve', word1: 'STANDBY', word2: 'READY', val: available, sub: 'Immediate tasking reserve', color: 'var(--steel)' },
+          { label: 'Weapons Issued', word1: 'WEAPONS', word2: 'ARMOURY', val: issued, sub: `of ${weapons.length} registered weapons`, color: 'var(--army-green-bright)' },
+          { label: 'Active Alerts', word1: 'ALERTS', word2: 'URGENT', val: alerts.length, sub: 'Requires guard officer review', color: 'var(--amber)' },
         ].map((s, i) => (
-          <div key={i} className="card hud-corner">
-            <div className="mono text-dim" style={{ fontSize: 10.5, letterSpacing: '.1em' }}>{s.label.toUpperCase()}</div>
+          <div key={i} className="card hud-corner" style={{ borderRadius: 'var(--radius-card)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="mono text-dim" style={{ fontSize: 10.5, letterSpacing: '.1em' }}>{s.label.toUpperCase()}</div>
+              <FlippingWordSwap
+                word1={s.word1}
+                word2={s.word2}
+                duration={350}
+                stagger={26}
+                interval={2500 + i * 400}
+                style={{ fontSize: 10.5, fontFamily: 'var(--font-mono)', color: 'var(--gold-light)', fontWeight: 700 }}
+              />
+            </div>
             <div className="disp" style={{ fontSize: 36, fontWeight: 800, margin: '6px 0 2px', color: s.color }}>{s.val}</div>
             <div className="mono text-dim" style={{ fontSize: 11 }}>{s.sub}</div>
           </div>
@@ -879,7 +1391,432 @@ function DDMSDashboardView({ user, personnel, posts, alerts, weapons }) {
   );
 }
 
-function DDMSRosterView({ personnel, posts }) {
+/* ==========================================================================
+   OFFICIAL INDIAN ARMY PDF DOCUMENT GENERATOR & PRINT DISPATCHER
+   ========================================================================== */
+
+function generateDutyReportPDF(records, filterDate = "ALL", adminUser = "Col R. S. Rathore (Commanding Officer)") {
+  const printWindow = window.open('', '_blank', 'width=980,height=760');
+  if (!printWindow) {
+    alert("Pop-up blocked! Please allow pop-ups for this site to generate and download the official PDF muster roll.");
+    return;
+  }
+
+  const dateStr = filterDate === "ALL" ? new Date().toDateString().toUpperCase() : filterDate;
+  const hash = "SHA256-" + Array.from({ length: 12 }, () => Math.floor(Math.random() * 16).toString(16)).join('').toUpperCase();
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <title>INDIAN ARMY — Daily Duty Allocation & Guard Manning Muster Roll</title>
+      <style>
+        @page { size: A4 portrait; margin: 12mm 15mm; }
+        body { font-family: 'Times New Roman', Times, serif; color: #111; margin: 0; padding: 24px; font-size: 11.5px; line-height: 1.35; background: #fff; }
+        .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 14px; position: relative; }
+        .classification { font-weight: bold; color: #b00; letter-spacing: 2.5px; font-size: 11px; margin-bottom: 6px; }
+        .emblem-title { font-size: 16px; font-weight: bold; letter-spacing: 1.2px; text-transform: uppercase; margin: 0; }
+        .sub-header { font-size: 12.5px; font-weight: bold; margin-top: 3px; color: #222; }
+        .doc-title { font-size: 13.5px; font-weight: bold; margin-top: 6px; text-decoration: underline; letter-spacing: 0.5px; }
+        .meta-strip { display: flex; justify-content: space-between; font-size: 10.5px; margin-top: 10px; border-bottom: 1px dashed #777; padding-bottom: 6px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 10.5px; }
+        th, td { border: 1px solid #333; padding: 6px 7px; text-align: left; }
+        th { background: #f0f0f0; font-weight: bold; text-transform: uppercase; font-size: 10px; }
+        .status-badge { display: inline-block; padding: 2px 5px; font-size: 9px; font-weight: bold; border: 1px solid #333; border-radius: 2px; }
+        .footer-sig { margin-top: 34px; display: flex; justify-content: space-between; align-items: flex-end; page-break-inside: avoid; }
+        .sig-block { border-top: 1px solid #000; padding-top: 6px; width: 230px; text-align: center; font-size: 10.5px; }
+        .watermark { position: fixed; top: 38%; left: 10%; transform: rotate(-32deg); font-size: 60px; color: rgba(0,0,0,0.05); font-weight: bold; pointer-events: none; z-index: -1; }
+        .no-print { display: flex; justify-content: space-between; align-items: center; background: #1f3624; color: #fff; padding: 12px 18px; margin-bottom: 20px; border-radius: 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .btn-print { background: #c5a059; color: #0c140e; border: none; padding: 8px 18px; font-weight: bold; cursor: pointer; border-radius: 4px; font-size: 12px; }
+        .btn-print:hover { background: #dfba74; }
+        @media print {
+          .no-print { display: none !important; }
+          body { padding: 0; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="watermark">RESTRICTED // DEFENCE OFFICIAL</div>
+      <div class="no-print">
+        <div>
+          <strong style="color: #dfba74;">INDIAN ARMY DDMS OFFICIAL MUSTER ROLL</strong> — Ready for PDF Download or Direct Print
+        </div>
+        <button class="btn-print" onclick="window.print()">⬇ SAVE / PRINT AS PDF</button>
+      </div>
+
+      <div class="header">
+        <div class="classification">RESTRICTED // FOR OFFICIAL ARMED FORCES USE ONLY</div>
+        <div class="emblem-title">INTEGRATED HEADQUARTERS OF MINISTRY OF DEFENCE (ARMY)</div>
+        <div class="sub-header">DIRECTORATE GENERAL OF OPERATIONAL LOGISTICS & FIELD COMMAND</div>
+        <div class="doc-title">DAILY GUARD DUTY & STATION MANNING MUSTER ROLL (FORM IA-2026/GSRO)</div>
+        <div class="meta-strip">
+          <span><strong>DATE:</strong> ${dateStr}</span>
+          <span><strong>FORMATION:</strong> 2 GRENADIERS / NORTHERN THEATRE</span>
+          <span><strong>DEFCON:</strong> 4 NORMAL READY</span>
+          <span><strong>DISPATCH REF:</strong> DDMS-OPS/${dateStr.replace(/[^a-zA-Z0-9]/g, '')}/HQ</span>
+        </div>
+      </div>
+
+      <p style="margin: 0 0 10px; font-size: 11px;">
+        Pursuant to Section Orders and Field Standing Regulations, the undermentioned military personnel have been gazetted and deployed to designated tactical guard stations and sentry posts for the stated duty duration:
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 25px; text-align: center;">SR.</th>
+            <th>DATE</th>
+            <th>GUARD POST / STATION</th>
+            <th>ARMY NO. & RANK</th>
+            <th>SOLDIER NAME</th>
+            <th>REGIMENT / UNIT</th>
+            <th>SHIFT WINDOW</th>
+            <th>STATUS</th>
+            <th>AUTHORIZED BY</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${records.map((r, i) => `
+            <tr>
+              <td style="text-align: center;">${i + 1}</td>
+              <td style="font-family: monospace;">${r.date || dateStr}</td>
+              <td><strong>${r.post}</strong></td>
+              <td style="font-family: monospace;">${r.armyNo || '—'} (${r.rank || 'Hav'})</td>
+              <td><strong>${r.name || r.personnel || '—'}</strong></td>
+              <td>${r.unit || '2 GRENADIERS'}</td>
+              <td style="font-family: monospace;">${r.shift}</td>
+              <td><span class="status-badge">${r.status || 'DEPLOYED'}</span></td>
+              <td style="font-size: 9.5px; color: #333;">${r.authorizedBy || adminUser}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+
+      <div class="footer-sig">
+        <div>
+          <div style="font-size: 9.5px; color: #555; line-height: 1.5;">
+            <strong>Cryptographic Ledger Hash:</strong> <span style="font-family: monospace;">${hash}</span><br>
+            <strong>Restricted Terminal Node:</strong> DEL-09-TACTICAL<br>
+            <strong>System Registry:</strong> Automated DDMS Operational Roster Engine
+          </div>
+        </div>
+        <div class="sig-block">
+          <strong>${adminUser}</strong><br>
+          Commanding Officer / Adjutant<br>
+          Integrated Defence Guard Operations
+        </div>
+      </div>
+
+      <script>
+        window.onload = function() {
+          setTimeout(function() { window.print(); }, 400);
+        };
+      </script>
+    </body>
+    </html>
+  `;
+
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+}
+
+/* ==========================================================================
+   ADMIN INTERACTIVE DUTY ASSIGNMENT MODAL
+   ========================================================================== */
+
+function AdminAssignDutyModal({ isOpen, onClose, personnel, posts, onDutyAssigned, adminUser }) {
+  if (!isOpen) return null;
+
+  const [soldier, setSoldier] = useState(personnel[0] ? `${personnel[0].armyNo} ${personnel[0].name}` : "");
+  const [post, setPost] = useState(posts[0]?.name || "Main Gate");
+  const [shift, setShift] = useState("0600–1400");
+  const [dutyDate, setDutyDate] = useState(new Date().toISOString().substring(0, 10));
+  const [priority, setPriority] = useState("HIGH");
+  const [submitting, setSubmitting] = useState(false);
+  const [statusMsg, setStatusMsg] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setStatusMsg("");
+    try {
+      await onDutyAssigned({
+        shift,
+        post,
+        personnelName: soldier,
+        operator: adminUser,
+        date: dutyDate,
+        priority
+      });
+      setStatusMsg("SUCCESS: Guard Duty Order Gazetted to Backend Roster & History");
+      setTimeout(() => {
+        onClose();
+      }, 700);
+    } catch (err) {
+      setStatusMsg("ERROR: " + err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div 
+        className="modal-content hud-corner" 
+        onClick={e => e.stopPropagation()} 
+        style={{ maxWidth: 540, width: '92%', background: 'var(--bg-surface)', border: '1.5px solid var(--gold)', borderRadius: 'var(--radius-card)', padding: '26px' }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, borderBottom: '1px solid var(--line)', paddingBottom: 12 }}>
+          <div>
+            <div className="chip chip-gold" style={{ fontSize: 9.5, marginBottom: 4 }}>ADMIN COMMAND AUTHORITY</div>
+            <h3 style={{ margin: 0, fontSize: 18, color: 'var(--ink-bright)', fontFamily: 'var(--font-display)' }}>
+              ASSIGN / OVERRIDE GUARD DUTY
+            </h3>
+          </div>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--ink-dim)', fontSize: 20, cursor: 'pointer' }}>✕</button>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 15 }}>
+          <div>
+            <label className="mono" style={{ display: 'block', fontSize: 11, color: 'var(--gold-light)', marginBottom: 6 }}>
+              1. DATE OF DEPLOYMENT
+            </label>
+            <input 
+              type="date" 
+              value={dutyDate} 
+              onChange={e => setDutyDate(e.target.value)} 
+              required
+              className="mono"
+              style={{ width: '100%', padding: '10px 14px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)', fontSize: 13 }}
+            />
+          </div>
+
+          <div>
+            <label className="mono" style={{ display: 'block', fontSize: 11, color: 'var(--gold-light)', marginBottom: 6 }}>
+              2. SELECT SERVICEMAN (FROM MUSTER ROLL)
+            </label>
+            <select 
+              value={soldier} 
+              onChange={e => setSoldier(e.target.value)}
+              required
+              className="mono"
+              style={{ width: '100%', padding: '10px 14px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)', fontSize: 13 }}
+            >
+              {personnel.map(p => (
+                <option key={p.armyNo} value={`${p.armyNo} ${p.name}`}>
+                  {p.armyNo} — {p.rank} {p.name} ({p.unit}) [{p.status}]
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div>
+              <label className="mono" style={{ display: 'block', fontSize: 11, color: 'var(--gold-light)', marginBottom: 6 }}>
+                3. GUARD POST / SECTOR
+              </label>
+              <select 
+                value={post} 
+                onChange={e => setPost(e.target.value)}
+                required
+                className="mono"
+                style={{ width: '100%', padding: '10px 14px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)', fontSize: 13 }}
+              >
+                {posts.map(p => (
+                  <option key={p.id} value={p.name}>
+                    {p.name} ({p.id})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mono" style={{ display: 'block', fontSize: 11, color: 'var(--gold-light)', marginBottom: 6 }}>
+                4. SHIFT WINDOW
+              </label>
+              <select 
+                value={shift} 
+                onChange={e => setShift(e.target.value)}
+                required
+                className="mono"
+                style={{ width: '100%', padding: '10px 14px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)', fontSize: 13 }}
+              >
+                <option value="0600–1400">0600–1400 IST (Morning Shift)</option>
+                <option value="1400–2200">1400–2200 IST (Evening Shift)</option>
+                <option value="2200–0600">2200–0600 IST (Night Watch)</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ background: 'var(--bg-panel-2)', padding: '10px 14px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="mono" style={{ fontSize: 11, color: 'var(--ink-dim)' }}>COMMANDING OFFICER:</span>
+            <span className="mono text-gold" style={{ fontSize: 12, fontWeight: 700 }}>{adminUser}</span>
+          </div>
+
+          {statusMsg && (
+            <div className="mono" style={{ fontSize: 12, color: statusMsg.startsWith('ERROR') ? 'var(--danger)' : 'var(--success)', textAlign: 'center' }}>
+              {statusMsg}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
+            <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">CANCEL</button>
+            <button type="submit" disabled={submitting} className="btn btn-gold btn-sm" style={{ minWidth: 160 }}>
+              {submitting ? "DISPATCHING…" : "⚔️ CONFIRM DUTY ORDER"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ==========================================================================
+   DUTY HISTORY VIEW (WHO WORKED ON THIS DAY & IN WHICH POST)
+   ========================================================================== */
+
+function DDMSDutyHistoryView({ history = [], onAssignClick, onDownloadPDF, isAdmin, adminUser }) {
+  const [selectedDate, setSelectedDate] = useState("ALL");
+  const [selectedPost, setSelectedPost] = useState("ALL");
+  const [search, setSearch] = useState("");
+
+  const uniqueDates = ["ALL", ...new Set(history.map(h => h.date).filter(Boolean))];
+  const uniquePosts = ["ALL", ...new Set(history.map(h => h.post).filter(Boolean))];
+
+  const filtered = history.filter(item => {
+    const matchDate = selectedDate === "ALL" || item.date === selectedDate;
+    const matchPost = selectedPost === "ALL" || item.post.toLowerCase().includes(selectedPost.toLowerCase());
+    const matchSearch = (item.name && item.name.toLowerCase().includes(search.toLowerCase())) || 
+                        (item.armyNo && item.armyNo.toLowerCase().includes(search.toLowerCase())) ||
+                        (item.post && item.post.toLowerCase().includes(search.toLowerCase()));
+    return matchDate && matchPost && matchSearch;
+  });
+
+  return (
+    <div className="fade-in" style={{ display: 'grid', gap: 20 }}>
+      <Panel
+        title="Guard Duty Historical Deployment Ledger"
+        eyebrow="Chronological Duty Record // Who Worked When & Where"
+        right={
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button 
+              onClick={() => onDownloadPDF(filtered, selectedDate)} 
+              className="btn btn-secondary btn-sm"
+              title="Generate and download official formatted Indian Army PDF muster roll"
+            >
+              ⬇ DOWNLOAD PDF REPORT
+            </button>
+            {isAdmin && (
+              <button 
+                onClick={onAssignClick} 
+                className="btn btn-gold btn-sm"
+              >
+                ➕ ASSIGN NEW DUTY
+              </button>
+            )}
+          </div>
+        }
+      >
+        {/* Filter Controls Bar */}
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', paddingBottom: 16, borderBottom: '1px solid var(--line)', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="mono" style={{ fontSize: 11, color: 'var(--gold-light)' }}>DATE:</span>
+            <select
+              value={selectedDate}
+              onChange={e => setSelectedDate(e.target.value)}
+              className="mono"
+              style={{ background: 'var(--bg-base)', color: 'var(--ink)', border: '1px solid var(--line)', padding: '6px 10px', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
+            >
+              {uniqueDates.map(d => (
+                <option key={d} value={d}>{d === "ALL" ? "All Dates (Full Archive)" : d}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="mono" style={{ fontSize: 11, color: 'var(--gold-light)' }}>POST:</span>
+            <select
+              value={selectedPost}
+              onChange={e => setSelectedPost(e.target.value)}
+              className="mono"
+              style={{ background: 'var(--bg-base)', color: 'var(--ink)', border: '1px solid var(--line)', padding: '6px 10px', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
+            >
+              {uniquePosts.map(p => (
+                <option key={p} value={p}>{p === "ALL" ? "All Posts" : p}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <input 
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search Soldier Name, Army No, or Station…"
+              className="mono"
+              style={{ width: '100%', padding: '6px 12px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink)', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
+            />
+          </div>
+
+          <div className="mono text-dim" style={{ fontSize: 11 }}>
+            Showing <strong>{filtered.length}</strong> deployment records
+          </div>
+        </div>
+
+        {/* History Table */}
+        <div style={{ overflowX: 'auto' }}>
+          <table className="tactical-table">
+            <thead>
+              <tr>
+                <th>DATE</th>
+                <th>GUARD POST / STATION</th>
+                <th>SOLDIER NAME & NO.</th>
+                <th>RANK & UNIT</th>
+                <th>SHIFT WINDOW</th>
+                <th>STATUS</th>
+                <th>AUTHORIZED BY</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '30px 10px', color: 'var(--ink-dim)' }}>
+                    No historical deployment records match the selected date or post filters.
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((item, i) => (
+                  <tr key={item.id || i} className="board-row">
+                    <td className="mono text-gold" style={{ fontWeight: 600 }}>{item.date}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--ink-bright)' }}>{item.post}</td>
+                    <td>
+                      <div style={{ fontWeight: 600, color: 'var(--ink-bright)' }}>{item.name}</div>
+                      <div className="mono text-dim" style={{ fontSize: 11 }}>{item.armyNo}</div>
+                    </td>
+                    <td>
+                      <div className="mono">{item.rank}</div>
+                      <div className="mono text-dim" style={{ fontSize: 11 }}>{item.unit}</div>
+                    </td>
+                    <td className="mono">{item.shift}</td>
+                    <td>
+                      <span className={`chip ${item.status === 'COMPLETED' ? 'chip-duty' : item.status === 'ONGOING' ? 'chip-gold' : 'chip-duty'}`} style={{ fontSize: 10 }}>
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="mono text-dim" style={{ fontSize: 11 }}>{item.authorizedBy}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+function DDMSRosterView({ personnel, posts, onAssignClick, onDownloadPDF, isAdmin }) {
   const [filter, setFilter] = useState("ALL");
   const [search, setSearch] = useState("");
   const units = ["ALL", ...new Set(personnel.map(p => p.unit))];
@@ -896,7 +1833,24 @@ function DDMSRosterView({ personnel, posts }) {
         title="Personnel Duty Master Roster" 
         eyebrow="Roster Registry"
         right={
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            {onDownloadPDF && (
+              <button 
+                onClick={() => onDownloadPDF(filtered)} 
+                className="btn btn-secondary btn-sm"
+                title="Download formatted official muster roll PDF"
+              >
+                ⬇ DOWNLOAD PDF
+              </button>
+            )}
+            {isAdmin && onAssignClick && (
+              <button 
+                onClick={onAssignClick} 
+                className="btn btn-gold btn-sm"
+              >
+                ➕ ASSIGN DUTY
+              </button>
+            )}
             <input 
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -1027,7 +1981,7 @@ function DDMSPersonnelView({ personnel }) {
       <Panel title="Servicemen Roster & Rest Matrix" eyebrow="Unit Personnel">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
           {personnel.map((p, i) => (
-            <div key={i} className="card hud-corner" style={{ background: 'var(--bg-panel-2)' }}>
+            <div key={i} className="card hud-corner" style={{ background: 'var(--bg-panel-2)', borderRadius: 'var(--radius-inner)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink-bright)' }}>{p.name}</div>
@@ -1061,7 +2015,7 @@ function DDMSPersonnelView({ personnel }) {
   );
 }
 
-function DDMSReportsView() {
+function DDMSReportsView({ auditLogs = AUDIT_LOG, user }) {
   const [generating, setGenerating] = useState(null);
   const reports = [
     { id: 'duty', name: 'Master Duty Allocation Report (PDF)', desc: 'Official roster with shift rosters, sector duties, and officer sign-offs.' },
@@ -1069,12 +2023,21 @@ function DDMSReportsView() {
     { id: 'attendance', name: 'Personnel Attendance & Muster Roll (PDF)', desc: 'Muster roll summary covering active duty, leave authorizations, and rest cycles.' },
   ];
 
-  const handleDownload = (id) => {
+  const handleDownload = async (id) => {
     setGenerating(id);
+    try {
+      await DefenceAPI.generateReport({
+        action: `Generated official PDF download: ${id.toUpperCase()} report`,
+        operator: user || "COMMAND OPERATOR",
+        category: "REPORTS"
+      });
+    } catch (e) {
+      console.warn('Offline report generation notice:', e);
+    }
     setTimeout(() => {
       setGenerating(null);
-      alert(`Report generated successfully! (Simulated PDF download for ${id.toUpperCase()} report)`);
-    }, 1400);
+      alert(`Report generated & logged to backend! (Simulated PDF download for ${id.toUpperCase()} report)`);
+    }, 1200);
   };
 
   return (
@@ -1102,12 +2065,12 @@ function DDMSReportsView() {
 
       <Panel title="Cryptographic Shift Audit Log" eyebrow="Immutable Ledger">
         <div style={{ display: 'grid', gap: 0 }}>
-          {AUDIT_LOG.map((a, i) => (
+          {auditLogs.map((a, i) => (
             <div key={i} className="board-row" style={{ display: 'grid', gridTemplateColumns: '120px 150px 1fr 120px', gap: 14, padding: '12px 8px', alignItems: 'center' }}>
-              <span className="mono text-dim" style={{ fontSize: 11 }}>{a.ts}</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold-light)' }}>{a.event}</span>
-              <span style={{ fontSize: 13, color: 'var(--ink)' }}>{a.detail}</span>
-              <span className="mono text-dim" style={{ fontSize: 11, textAlign: 'right' }}>{a.by}</span>
+              <span className="mono text-dim" style={{ fontSize: 11 }}>{a.ts || a.time}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold-light)' }}>{a.event || a.category}</span>
+              <span style={{ fontSize: 13, color: 'var(--ink)' }}>{a.detail || a.action}</span>
+              <span className="mono text-dim" style={{ fontSize: 11, textAlign: 'right' }}>{a.by || a.operator}</span>
             </div>
           ))}
         </div>
@@ -1118,18 +2081,128 @@ function DDMSReportsView() {
 
 function DDMSCommandSuite({ user, onLogout }) {
   const [tab, setTab] = useState('dashboard');
+  const [role, setRole] = useState('ADMIN'); // 'ADMIN' (Commanding Officer) or 'OPERATOR' (Guard Commander)
+  const [adminUser, setAdminUser] = useState("Col R. S. Rathore (Commanding Officer)");
   const [personnel, setPersonnel] = useState(PERSONNEL);
   const [weapons, setWeapons] = useState(WEAPONS_INITIAL);
   const [alerts, setAlerts] = useState(ALERTS_INITIAL);
+  const [posts, setPosts] = useState(POSTS);
+  const [auditLogs, setAuditLogs] = useState(AUDIT_LOG);
+  const [dutyHistory, setDutyHistory] = useState([]);
+  const [showAssignModal, setShowAssignModal] = useState(false);
 
-  const handleScanReturn = () => {
-    setWeapons(prev => prev.map(w => w.serial === "INSAS-4472" ? { ...w, status: "IN ARMOURY", holder: "—" } : w));
-    setAlerts(prev => [{ level: "gold", text: "INSAS-4472 confirmed returned to Armoury via QR Scan", time: "Just now" }, ...prev]);
+  // Background Data Synchronization with Express REST Backend
+  useEffect(() => {
+    let mounted = true;
+
+    const syncDDMS = async () => {
+      try {
+        const [pData, wData, aData, rData, repData, hData] = await Promise.all([
+          DefenceAPI.getPersonnel().catch(() => null),
+          DefenceAPI.getWeapons().catch(() => null),
+          DefenceAPI.getAlerts().catch(() => null),
+          DefenceAPI.getRoster().catch(() => null),
+          DefenceAPI.getReports().catch(() => null),
+          DefenceAPI.getDutyHistory().catch(() => null)
+        ]);
+
+        if (!mounted) return;
+        if (pData) setPersonnel(pData);
+        if (wData) setWeapons(wData.map(w => ({
+          serial: w.serial,
+          type: w.type,
+          status: w.status === 'ISSUED' ? 'ISSUED' : 'IN ARMOURY',
+          holder: w.issuedTo || '—',
+          ammo: w.calibre || 'Standard NATO',
+          qr: `QR-${w.serial}`
+        })));
+        if (aData) setAlerts(aData.map(a => ({
+          level: a.severity === 'ALERT' ? 'danger' : a.severity === 'WARN' ? 'amber' : 'gold',
+          text: a.text,
+          time: a.time
+        })));
+        if (rData && rData.posts) setPosts(rData.posts);
+        if (repData) setAuditLogs(repData.map(rep => ({
+          ts: rep.time,
+          event: rep.category || "AUDIT",
+          detail: rep.action,
+          by: rep.operator || "HQ DESK"
+        })));
+        if (hData) setDutyHistory(hData);
+      } catch (err) {
+        console.warn('DDMS background sync notice:', err);
+      }
+    };
+
+    syncDDMS();
+    const interval = setInterval(syncDDMS, 4000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  const handleAdminAssignDuty = async (dutyData) => {
+    const res = await DefenceAPI.assignRoster(dutyData);
+    // Refresh all DDMS datasets from backend
+    const [hData, rData, aData, repData] = await Promise.all([
+      DefenceAPI.getDutyHistory().catch(() => null),
+      DefenceAPI.getRoster().catch(() => null),
+      DefenceAPI.getAlerts().catch(() => null),
+      DefenceAPI.getReports().catch(() => null)
+    ]);
+    if (hData) setDutyHistory(hData);
+    if (rData && rData.posts) setPosts(rData.posts);
+    if (aData) setAlerts(aData.map(a => ({
+      level: a.severity === 'ALERT' ? 'danger' : a.severity === 'WARN' ? 'amber' : 'gold',
+      text: a.text,
+      time: a.time
+    })));
+    if (repData) setAuditLogs(repData.map(rep => ({
+      ts: rep.time,
+      event: rep.category || "AUDIT",
+      detail: rep.action,
+      by: rep.operator || "HQ DESK"
+    })));
+    return res;
+  };
+
+  const handleScanReturn = async (weaponSerial = "WPN-7021") => {
+    try {
+      const res = await DefenceAPI.issueWeapon({
+        serial: weaponSerial,
+        soldierName: role === 'ADMIN' ? adminUser : user,
+        operator: role === 'ADMIN' ? adminUser : user
+      });
+      if (res && res.weapons) {
+        setWeapons(res.weapons.map(w => ({
+          serial: w.serial,
+          type: w.type,
+          status: w.status === 'ISSUED' ? 'ISSUED' : 'IN ARMOURY',
+          holder: w.issuedTo || '—',
+          ammo: w.calibre,
+          qr: `QR-${w.serial}`
+        })));
+      }
+      const updatedReports = await DefenceAPI.getReports();
+      if (updatedReports) {
+        setAuditLogs(updatedReports.map(rep => ({
+          ts: rep.time,
+          event: rep.category,
+          detail: rep.action,
+          by: rep.operator
+        })));
+      }
+    } catch (e) {
+      setWeapons(prev => prev.map(w => w.serial === "INSAS-4472" || w.serial === "WPN-7021" ? { ...w, status: w.status === "ISSUED" ? "IN ARMOURY" : "ISSUED", holder: user } : w));
+    }
+    setAlerts(prev => [{ level: "gold", text: `${weaponSerial} verified & logged via QR Scan to ${user}`, time: "Just now" }, ...prev]);
   };
 
   const navTabs = [
     { id: 'dashboard', label: 'Command Board' },
     { id: 'roster', label: 'Duty Roster' },
+    { id: 'history', label: 'Duty History' },
     { id: 'weapons', label: 'Weapons Registry' },
     { id: 'personnel', label: 'Personnel' },
     { id: 'reports', label: 'Reports & Logs' },
@@ -1137,14 +2210,24 @@ function DDMSCommandSuite({ user, onLogout }) {
 
   return (
     <div className="ddms-wrapper hud-corner fade-in">
-      {/* Top Status Strip */}
+      {/* Top Status Strip with Admin Role Switcher */}
       <div className="ddms-top-status-strip">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <span className="text-gold" style={{ fontWeight: 700 }}>DDMS COMMAND DESK</span>
           <span style={{ color: 'var(--line-strong)' }}>|</span>
-          <span style={{ color: 'var(--ink-dim)' }}>AUTHENTICATED OPERATOR: {user}</span>
+          <span style={{ color: 'var(--ink-dim)' }}>
+            OPERATOR: {role === 'ADMIN' ? adminUser : user}
+          </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <button 
+            onClick={() => setRole(r => r === 'ADMIN' ? 'OPERATOR' : 'ADMIN')}
+            className={`chip ${role === 'ADMIN' ? 'chip-gold' : 'chip-duty'}`}
+            style={{ cursor: 'pointer', border: '1px solid var(--gold)', fontWeight: 700 }}
+            title="Click to toggle between Admin (Full Override & Duty Assignment) and Operator mode"
+          >
+            {role === 'ADMIN' ? '🛡️ ADMIN OVERRIDE (ACTIVE)' : '👤 OPERATOR (RESTRICTED)'}
+          </button>
           <span className="chip chip-duty">NODE ACTIVE</span>
           <span className="chip chip-danger">{alerts.length} ALERTS</span>
         </div>
@@ -1171,7 +2254,7 @@ function DDMSCommandSuite({ user, onLogout }) {
           </nav>
 
           <div style={{ padding: 18, borderTop: '1px solid var(--line)' }}>
-            <div className="mono text-dim" style={{ fontSize: 11, marginBottom: 8 }}>{user} · 2 GRENADIERS</div>
+            <div className="mono text-dim" style={{ fontSize: 11, marginBottom: 8 }}>{role === 'ADMIN' ? 'HQ ADJUTANT / CO' : `${user} · 2 GRENADIERS`}</div>
             <button 
               onClick={onLogout}
               className="btn btn-ghost btn-sm"
@@ -1195,14 +2278,41 @@ function DDMSCommandSuite({ user, onLogout }) {
           </div>
 
           <div className="ddms-view-content">
-            {tab === 'dashboard' && <DDMSDashboardView user={user} personnel={personnel} posts={POSTS} alerts={alerts} weapons={weapons} />}
-            {tab === 'roster' && <DDMSRosterView personnel={personnel} posts={POSTS} />}
+            {tab === 'dashboard' && <DDMSDashboardView user={user} personnel={personnel} posts={posts} alerts={alerts} weapons={weapons} />}
+            {tab === 'roster' && (
+              <DDMSRosterView 
+                personnel={personnel} 
+                posts={posts} 
+                onAssignClick={() => setShowAssignModal(true)} 
+                onDownloadPDF={(recs) => generateDutyReportPDF(dutyHistory.length ? dutyHistory : recs, "ALL", adminUser)}
+                isAdmin={role === 'ADMIN'} 
+              />
+            )}
+            {tab === 'history' && (
+              <DDMSDutyHistoryView 
+                history={dutyHistory} 
+                onAssignClick={() => setShowAssignModal(true)} 
+                onDownloadPDF={(recs, date) => generateDutyReportPDF(recs, date, adminUser)} 
+                isAdmin={role === 'ADMIN'} 
+                adminUser={adminUser} 
+              />
+            )}
             {tab === 'weapons' && <DDMSWeaponsView weapons={weapons} onScanReturn={handleScanReturn} />}
             {tab === 'personnel' && <DDMSPersonnelView personnel={personnel} />}
-            {tab === 'reports' && <DDMSReportsView />}
+            {tab === 'reports' && <DDMSReportsView auditLogs={auditLogs} user={role === 'ADMIN' ? adminUser : user} />}
           </div>
         </div>
       </div>
+
+      {/* Admin Duty Assignment Modal */}
+      <AdminAssignDutyModal
+        isOpen={showAssignModal}
+        onClose={() => setShowAssignModal(false)}
+        personnel={personnel}
+        posts={posts}
+        onDutyAssigned={handleAdminAssignDuty}
+        adminUser={adminUser}
+      />
     </div>
   );
 }
@@ -1225,21 +2335,22 @@ function GallerySection({ onSelectImage }) {
 
         <div className="gallery-grid">
           {GALLERY_ITEMS.map(item => (
-            <div 
-              key={item.id} 
-              className="gallery-card hud-corner"
-              onClick={() => onSelectImage(item)}
-            >
-              <img src={item.img} alt={item.title} />
-              <div className="gallery-overlay">
-                <span className="gallery-tag">{item.tag}</span>
-                <h3 className="gallery-title">{item.title}</h3>
-                <p className="gallery-desc">{item.desc}</p>
-                <span className="mono text-gold" style={{ fontSize: 11, marginTop: 8, fontWeight: 600 }}>
-                  CLICK TO VIEW SPECIFICATIONS ➔
-                </span>
-              </div>
-            </div>
+            <ComponentBoxCard
+              key={item.id}
+              category={item.category}
+              actionLabel="Details >"
+              word1={item.word1}
+              word2={item.word2}
+              title={item.title}
+              description={item.desc}
+              image={item.img}
+              badge="Asset"
+              previewHeight={185}
+              duration={400}
+              stagger={32}
+              interval={3400 + item.id * 300}
+              onAction={() => onSelectImage(item)}
+            />
           ))}
         </div>
       </div>
@@ -1262,7 +2373,16 @@ function GalleryModal({ item, onClose }) {
           </button>
         </div>
         <div style={{ padding: 24 }}>
-          <span className="chip chip-gold" style={{ marginBottom: 8 }}>{item.tag}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <span className="chip chip-gold">{item.category}</span>
+            <FlippingWordSwap
+              word1={item.word1}
+              word2={item.word2}
+              duration={350}
+              stagger={28}
+              style={{ fontSize: 13, fontFamily: 'var(--font-mono)', color: 'var(--gold-light)', fontWeight: 700 }}
+            />
+          </div>
           <h3 className="disp" style={{ fontSize: 22, fontWeight: 800, color: 'var(--ink-bright)', marginTop: 4 }}>{item.title}</h3>
           <p style={{ fontSize: 14, color: 'var(--ink-dim)', marginTop: 8, lineHeight: 1.6 }}>{item.desc}</p>
           <div className="stenciled" style={{ margin: '16px 0' }}></div>
@@ -1293,8 +2413,17 @@ function NoticesSection() {
         </div>
 
         <div className="notices-grid">
-          <div className="card hud-corner">
-            <div className="eyebrow" style={{ marginBottom: 14 }}>HEADQUARTERS BULLETINS</div>
+          <div className="card hud-corner" style={{ borderRadius: 'var(--radius-card)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div className="eyebrow">HEADQUARTERS BULLETINS</div>
+              <FlippingWordSwap
+                word1="GAZETTE"
+                word2="ORDERS"
+                duration={350}
+                stagger={26}
+                style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--gold-light)', fontWeight: 700 }}
+              />
+            </div>
             <div>
               {NOTICES.map((n, i) => (
                 <div key={i} className="notice-item">
@@ -1317,7 +2446,7 @@ function NoticesSection() {
               </p>
             </div>
 
-            <div className="card hud-corner">
+            <div className="card hud-corner" style={{ borderRadius: 'var(--radius-card)' }}>
               <div className="eyebrow" style={{ marginBottom: 8 }}>JOIN INDIAN ARMY</div>
               <p style={{ fontSize: 13, color: 'var(--ink-dim)', lineHeight: 1.55 }}>
                 Opportunities for Officers (NDA, CDS, TGC, SSC) and Agniveers across all arms and services. Serve the nation with honour, dignity, and pride.
@@ -1420,9 +2549,59 @@ function App() {
   const [user, setUser] = useState("JC-118820P Hav Rawat, V.");
   const [selectedGalleryItem, setSelectedGalleryItem] = useState(null);
 
+  // Live Telemetry State connected to Express REST API
+  const [telemetry, setTelemetry] = useState({
+    theatreCommands: 7,
+    theatreCoverage: "Northern to Southern",
+    readinessStatus: "100%",
+    readinessNote: "All Formations Active",
+    postManningRatio: "10 / 12",
+    postManningNote: "Maintained via DDMS",
+    encryptionProtocol: "256-BIT SHA",
+    encryptionNode: "Restricted Defence Node",
+    defconLevel: "DEFCON 4 NORMAL READY",
+    secureNode: "DEL-09-TACTICAL",
+    istTime: new Date().toLocaleTimeString("en-IN") + " IST",
+    istDate: new Date().toDateString().toUpperCase(),
+    zuluTime: new Date().toISOString().substring(11, 19) + "Z",
+    connected: false,
+    pingMs: 0
+  });
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  // Telemetry Polling Loop (every 3 seconds)
+  useEffect(() => {
+    let mounted = true;
+
+    const pollTelemetry = async () => {
+      const t0 = performance.now();
+      try {
+        const data = await DefenceAPI.getTelemetry();
+        const ping = Math.max(1, Math.round(performance.now() - t0));
+        if (mounted && data) {
+          setTelemetry({
+            ...data,
+            connected: true,
+            pingMs: ping
+          });
+        }
+      } catch (err) {
+        if (mounted) {
+          setTelemetry(prev => ({ ...prev, connected: false }));
+        }
+      }
+    };
+
+    pollTelemetry();
+    const interval = setInterval(pollTelemetry, 3000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   const handleToggleTheme = () => {
     setTheme(t => t === 'dark' ? 'light' : 'dark');
@@ -1463,11 +2642,12 @@ function App() {
         portalMode={portalMode}
         theme={theme}
         onToggleTheme={handleToggleTheme}
+        telemetry={telemetry}
       />
 
       {/* Main Content Areas */}
       <main style={{ flex: 1 }}>
-        {/* 1. Hero Section */}
+        {/* 1. Hero Section with Live Telemetry */}
         <HeroSection
           onExplore={() => handleNavigate('about')}
           onOpenDDMS={() => {
@@ -1475,6 +2655,7 @@ function App() {
             const el = document.getElementById('ddms-section');
             if (el) el.scrollIntoView({ behavior: 'smooth' });
           }}
+          telemetry={telemetry}
         />
 
         {/* 2. Strategic Pillars */}

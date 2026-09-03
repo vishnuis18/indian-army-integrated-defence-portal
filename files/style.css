@@ -40,11 +40,11 @@
   --amber-glow: rgba(203, 139, 48, 0.25);
   --success: #369453;
 
-  --ink: #f0f4f1;
+  --ink: #f2f7f4;
   --ink-bright: #ffffff;
-  --ink-dim: #97aba0;
-  --ink-muted: #647a6d;
-  --ink-disabled: #46564c;
+  --ink-dim: #c5d8cc;
+  --ink-muted: #95ac9e;
+  --ink-disabled: #5b7365;
 
   --radius-xs: 2px;
   --radius-sm: 4px;
@@ -463,9 +463,9 @@ img {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.06em;
-  color: var(--ink);
+  color: #c5d8cd !important;
   text-transform: uppercase;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.95);
 }
 
 .component-box-header-right {
@@ -480,17 +480,17 @@ img {
   font-size: 11.5px;
   font-weight: 600;
   letter-spacing: 0.06em;
-  color: var(--ink-dim);
+  color: #dfba74 !important;
   transition: color 0.2s ease, transform 0.2s ease;
   display: inline-flex;
   align-items: center;
   gap: 4px;
   white-space: nowrap;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.95);
 }
 
 .component-box-card:hover .component-box-action {
-  color: var(--gold-light);
+  color: #f7d692 !important;
   transform: translateX(3px);
 }
 
@@ -723,7 +723,7 @@ img {
   border-bottom: 1px solid var(--line);
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--ink-muted);
+  color: #a8c4b2;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1025,15 +1025,16 @@ img {
 }
 
 .hero-title {
-  color: var(--ink-bright);
+  color: #ffffff !important;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.95), 0 0 35px rgba(0, 0, 0, 0.7);
 }
 
 .hero-title .title-accent {
   display: block;
-  background: linear-gradient(135deg, #dfba74 0%, #c5a059 50%, #9e7d3b 100%);
+  background: linear-gradient(135deg, #f7d692 0%, #dfba74 50%, #b89243 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  text-shadow: 0 0 30px rgba(197, 160, 89, 0.2);
+  text-shadow: 0 0 30px rgba(223, 186, 116, 0.45);
 }
 
 .hero-sanskrit {
@@ -1044,13 +1045,15 @@ img {
   border-left: 3px solid var(--gold);
   padding-left: 12px;
   margin: 4px 0;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9);
 }
 
 .hero-description {
   font-size: 1.08rem;
-  color: var(--ink-dim);
+  color: #d8e6de !important;
   max-width: 580px;
   line-height: 1.65;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.95);
 }
 
 .hero-actions {
@@ -1061,14 +1064,14 @@ img {
   margin-top: 10px;
 }
 
-/* Hero Telemetry Card - Enlarged & Prominent */
+/* Hero Telemetry Card - Crisp and High-Contrast */
 .hero-telemetry-card {
-  background: rgba(14, 23, 16, 0.84);
-  backdrop-filter: blur(18px);
-  border: 1px solid var(--line-strong);
+  background: rgba(10, 18, 12, 0.9) !important;
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(197, 160, 89, 0.4) !important;
   border-radius: 18px;
   padding: 34px 30px;
-  box-shadow: var(--shadow-lg), 0 0 36px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 24px rgba(197, 160, 89, 0.12);
 }
 
 .telemetry-grid {
@@ -1079,8 +1082,8 @@ img {
 }
 
 .telemetry-item {
-  background: var(--bg-panel-2);
-  border: 1px solid var(--line);
+  background: #142318 !important;
+  border: 1px solid #28442e !important;
   padding: 20px 18px;
   border-radius: var(--radius-inner);
   display: flex;
@@ -1091,17 +1094,17 @@ img {
 }
 
 .telemetry-item:hover {
-  border-color: var(--line-gold);
-  background: var(--bg-panel-hover);
+  border-color: var(--gold-light) !important;
+  background: #1b3021 !important;
   transform: translateY(-2px);
 }
 
 .telemetry-label {
   font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.1em;
-  color: var(--ink-muted);
+  color: #a4beaf !important;
   text-transform: uppercase;
 }
 
@@ -1112,12 +1115,13 @@ img {
   color: var(--gold-light);
   line-height: 1.1;
   margin: 8px 0 4px;
+  text-shadow: 0 0 16px rgba(223, 186, 116, 0.25);
 }
 
 .telemetry-sub {
   font-family: var(--font-mono);
   font-size: 11.5px;
-  color: var(--ink-dim);
+  color: #c0d4c7 !important;
 }
 
 /* ==========================================================================
@@ -1592,6 +1596,28 @@ img {
 /* Animation utilities */
 .fade-in {
   animation: fadeIn 0.35s ease-out;
+}
+
+/* Modal backdrop and card styles for Admin duty modal */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 16px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal-content {
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8), 0 0 24px rgba(197, 160, 89, 0.18);
 }
 
 @keyframes fadeIn {
