@@ -314,6 +314,166 @@ function dismissAlert(id) {
   return alerts;
 }
 
+// Strategic Pillars Doctrine Repository & Intelligence Records
+const strategicPillars = [
+  {
+    id: "mission-security",
+    category: "Territorial Defence",
+    badge: "Doctrine",
+    word1: "MISSION",
+    word2: "SECURITY",
+    title: "Mission & Security",
+    desc: "Safeguarding territorial integrity across 15,000+ km of land borders through proactive mountain warfare posture and rapid deterrence.",
+    motto: "सेवा परमो धर्मः — Service Before Self",
+    classification: "RESTRICTED DEFENCE DOCTRINE // SECTION 01",
+    overview: "The primary doctrine of the Indian Army is the unwavering preservation of national sovereignty, territorial integrity, and unity of India against external aggression and internal threats. Operating across the world's most treacherous border terrains—from the icy heights of Siachen to the searing sands of the Thar Desert—the force maintains constant vigilance through forward-deployed formations and active mountain warfare capabilities.",
+    operationalZones: [
+      { name: "Northern Frontier (LOC & LAC)", desc: "High-altitude vigil, extreme sub-zero mountain defence, and glacier command." },
+      { name: "Western Sector (Plains & Deserts)", desc: "Mechanized armoured strike deterrence, radar tracking, and rapid counter-offensive corridors." },
+      { name: "Eastern Sector (Himalayan Ridges)", desc: "Dense jungle warfare, mountain passes, and tri-junction strategic chokepoint security." },
+      { name: "Southern & Island Enclaves", desc: "Peninsular coastal defense, amphibious rapid response, and strategic maritime approaches." }
+    ],
+    doctrineParameters: [
+      { label: "Land Frontier Perimeter", value: "15,106.7 km", sub: "Active border patrolling grid" },
+      { label: "Operational Commands", value: "7 Theatres", sub: "Integrated tactical commands" },
+      { label: "Extreme Altitude Ops", value: "Up to 22,000 ft", sub: "Siachen & Himalayan heights" },
+      { label: "Deterrence Posture", value: "Proactive Defense", sub: "Rapid mobilization response" }
+    ],
+    strategicDirectives: [
+      "Maintain 24/7 uninterrupted visual, thermal, and radar surveillance across all border posts.",
+      "Ensure forward ammunition and logistical depots are sustained with high-altitude reserves.",
+      "Execute synchronized multi-arm border domination patrols with integrated air and artillery support.",
+      "Rapidly neutralize infiltration vectors through proactive counter-intrusion grids."
+    ]
+  },
+  {
+    id: "discipline-valour",
+    category: "Military Ethos",
+    badge: "Tradition",
+    word1: "DISCIPLINE",
+    word2: "VALOUR",
+    title: "Discipline & Valour",
+    desc: "Forged in over a century of unparalleled valor, sacrifice, and supreme devotion. Upholding ethical chain-of-command integrity.",
+    motto: "कर्तव्यं अन्वास्ते — Bound by Unflinching Duty & Honour",
+    classification: "MILITARY HERITAGE & ETHOS // SECTION 02",
+    overview: "The ethos of the Indian Army is rooted in unbreakable camaraderie, supreme courage under fire, and ironclad discipline. Over decades of gallantry—from the snow-capped cliffs of Tiger Hill to United Nations peace corridors—officers and soldiers live by the creed of leading from the front ('Follow Me'). The moral foundation guarantees unbending integrity, secular harmony, and adherence to the Chetwode motto.",
+    operationalZones: [
+      { name: "Infantry Regiments", desc: "The bedrock of combat valour: Gorkhas, Sikhs, Grenadiers, Paras, Rajputs, Kumaon, and Garhwal." },
+      { name: "Armoured & Mechanized Columns", desc: "Iron fists on the battleground executing synchronized high-tempo combat maneuvers." },
+      { name: "Special Forces (PARA SF)", desc: "Elite airborne operatives trained for asymmetric warfare, deep raids, and covert hostage rescue." },
+      { name: "Combat Engineers (Sappers)", desc: "Bridging insurmountable chasms, minefield clearance, and building strategic lifeline roads." }
+    ],
+    doctrineParameters: [
+      { label: "Heritage of Valour", value: "125+ Years", sub: "Unbroken martial lineage" },
+      { label: "Param Vir Chakra Citations", value: "21 Heroes", sub: "Highest wartime gallantry honour" },
+      { label: "Chetwode Motto", value: "Honour First", sub: "Safety & welfare of men always" },
+      { label: "Regimental Diversity", value: "Pan-India", sub: "United by one flag, one nation" }
+    ],
+    strategicDirectives: [
+      "Uphold the Chetwode Creed: The safety, honour, and welfare of your country come first, always and every time.",
+      "Foster unit cohesiveness through rigorous physical conditioning and uncompromising regimental pride.",
+      "Instill ethical leadership and constitutional devotion across every level of the chain of command.",
+      "Honor fallen braves and guarantee comprehensive welfare, pension, and medical care for Veer Naris and veterans."
+    ]
+  },
+  {
+    id: "modernization-tech",
+    category: "Tactical C4ISR",
+    badge: "Next-Gen",
+    word1: "TECHNOLOGY",
+    word2: "TACTICAL",
+    title: "Modernization & Tech",
+    desc: "Integrating indigenous drone surveillance networks, AI-assisted telemetry, automated QR logistics, and digital DDMS duty rosters.",
+    motto: "प्रौद्योगिकी एवं पराक्रम — Superiority Through Innovation",
+    classification: "ADVANCED DEFENCE TECHNOLOGY // SECTION 03",
+    overview: "Modern warfare demands information superiority and rapid sensor-to-shooter loops. The Indian Army is aggressively undergoing digital transformation through the induction of indigenous unmanned aerial systems, quantum-resistant tactical mesh networks, AI-enabled border surveillance, and the automated DDMS (Duty Deployment & Management System) for algorithmic roster and arms oversight.",
+    operationalZones: [
+      { name: "Unmanned Systems & Swarm Drones", desc: "Long-endurance tactical UAVs, tethered aerial sensors, and autonomous loitering munitions." },
+      { name: "Digital DDMS Roster Operations", desc: "Automated guard post manning, rest-cycle matrix monitoring, and instant QR ordnance validation." },
+      { name: "Tactical Communications Network (TCN)", desc: "Jam-resistant 256-bit encrypted field radio, optical fibre grids, and secure SATCOM downlinks." },
+      { name: "Cyber & Electronic Warfare Command", desc: "Protection of sovereign defence clouds, spectrum domination, and offensive cyber countermeasures." }
+    ],
+    doctrineParameters: [
+      { label: "Encryption Security", value: "256-Bit SHA", sub: "Restricted military cryptographic node" },
+      { label: "DDMS Duty Management", value: "Automated", sub: "Zero-error fatigue tracking & QR arms" },
+      { label: "Atmanirbhar Induction", value: "85%+ Indigenous", sub: "Drones, rifles, sensors & artillery" },
+      { label: "Sensor Fusion Loop", value: "Sub-Second", sub: "Unified C4ISR common operational picture" }
+    ],
+    strategicDirectives: [
+      "Accelerate the fielding of indigenous tactical electronics and AI reconnaissance algorithms.",
+      "Mandate automated DDMS duty rosters across guard posts to prevent soldier fatigue and assure alert compliance.",
+      "Enforce tamper-evident cryptographic QR scans on all weapon issues and ammunition depot transactions.",
+      "Harden command-and-control servers against advanced electronic countermeasures and distributed cyber incursions."
+    ]
+  },
+  {
+    id: "vigilance-service",
+    category: "Nation First",
+    badge: "24/7 Vigil",
+    word1: "VIGILANCE",
+    word2: "SERVICE",
+    title: "Vigilance & Service",
+    desc: "Providing round-the-clock humanitarian disaster relief (HADR), civil defense support, and leading global peacekeeping deployments.",
+    motto: "सर्वदा सन्नद्धाः — Always Prepared Everywhere in Crisis",
+    classification: "NATION BUILDING & HADR // SECTION 04",
+    overview: "Beyond combat deterrence, the Indian Army is the nation's premier instrument of crisis response. Whether executing immediate Humanitarian Assistance & Disaster Relief (HADR) during floods, earthquakes, and cyclones, or winning hearts and minds through Project Sadbhavana in remote border zones, the soldier stands as the ultimate guardian and protector of civilian lives.",
+    operationalZones: [
+      { name: "HADR Disaster Task Forces", desc: "Rapid deployment column with amphibious boats, mobile field hospitals, and water purification units." },
+      { name: "Operation Sadbhavana", desc: "Army goodwill schools, vocational training, women empowerment centers, and free medical camps." },
+      { name: "Border Infrastructure (BRO)", desc: "Construction of world's highest motorable passes, all-weather tunnels, and strategic frontier bridges." },
+      { name: "United Nations Peacekeeping", desc: "Blue Helmet contingents defending vulnerable populations across Africa, Middle East, and worldwide." }
+    ],
+    doctrineParameters: [
+      { label: "HADR Response Time", value: "< 60 Minutes", sub: "First responders in civil crises" },
+      { label: "UN Missions Served", value: "53+ Deployments", sub: "Over 200,000 Indian peacekeepers deployed" },
+      { label: "Sadbhavana Schools", value: "40+ Institutes", sub: "Empowering frontier youth with education" },
+      { label: "Civil Defense Readiness", value: "24/7/365 Standby", sub: "Constant pan-India vigilance status" }
+    ],
+    strategicDirectives: [
+      "Maintain standby Humanitarian Assistance & Disaster Relief (HADR) columns at every cantonment.",
+      "Deepen civil-military coordination for rapid disaster mitigation, medical rescue, and supply drops.",
+      "Expand Project Sadbhavana education and healthcare outposts to strengthen border community resilience.",
+      "Uphold India's distinguished international prestige as a compassionate, professional UN peacekeeping pillar."
+    ]
+  }
+];
+
+function getStrategicPillars() {
+  const telemetry = getTelemetry();
+  return strategicPillars.map(p => ({
+    id: p.id,
+    category: p.category,
+    badge: p.badge,
+    word1: p.word1,
+    word2: p.word2,
+    title: p.title,
+    desc: p.desc,
+    motto: p.motto,
+    classification: p.classification,
+    liveStatus: {
+      theatreCommands: telemetry.theatreCommands,
+      readinessStatus: telemetry.readinessStatus,
+      encryptionProtocol: telemetry.encryptionProtocol,
+      postManningRatio: telemetry.postManningRatio,
+      status: telemetry.status,
+      timestamp: telemetry.timestamp
+    }
+  }));
+}
+
+function getStrategicPillarById(id) {
+  const pillar = strategicPillars.find(p => p.id === id || p.title.toLowerCase().includes(id.toLowerCase()));
+  if (!pillar) return null;
+  const telemetry = getTelemetry();
+  return {
+    ...pillar,
+    liveTelemetry: {
+      ...telemetry,
+      alignedAt: new Date().toISOString()
+    }
+  };
+}
+
 module.exports = {
   personnel,
   posts,
@@ -322,6 +482,7 @@ module.exports = {
   weapons,
   alerts,
   auditLogs,
+  strategicPillars,
   getTelemetry,
   getDashboardStats,
   getManningChartData,
@@ -330,5 +491,7 @@ module.exports = {
   toggleWeaponIssue,
   updatePersonnelStatus,
   addAlert,
-  dismissAlert
+  dismissAlert,
+  getStrategicPillars,
+  getStrategicPillarById
 };

@@ -88,6 +88,24 @@ const DefenceAPI = {
     });
     if (!res.ok) throw new Error('Generate report failed');
     return (await res.json());
+  },
+  async getPillars() {
+    try {
+      const res = await fetch(`${API_BASE}/pillars`);
+      if (!res.ok) throw new Error('Pillars fetch failed');
+      return (await res.json()).data;
+    } catch (e) {
+      return null;
+    }
+  },
+  async getPillarDetails(id) {
+    try {
+      const res = await fetch(`${API_BASE}/pillars/${id}`);
+      if (!res.ok) throw new Error(`Pillar ${id} fetch failed`);
+      return (await res.json()).data;
+    } catch (e) {
+      return null;
+    }
   }
 };
 
@@ -949,9 +967,10 @@ function HeroSection({ onExplore, onOpenDDMS, telemetry }) {
    STRATEGIC PILLARS COMPONENT
    ========================================================================== */
 
-function StrategicPillars() {
+function StrategicPillars({ onSelectPillar }) {
   const pillars = [
     {
+      id: "mission-security",
       category: "Territorial Defence",
       word1: "MISSION",
       word2: "SECURITY",
@@ -961,6 +980,7 @@ function StrategicPillars() {
       badge: "Doctrine"
     },
     {
+      id: "discipline-valour",
       category: "Military Ethos",
       word1: "DISCIPLINE",
       word2: "VALOUR",
@@ -970,6 +990,7 @@ function StrategicPillars() {
       badge: "Tradition"
     },
     {
+      id: "modernization-tech",
       category: "Tactical C4ISR",
       word1: "TECHNOLOGY",
       word2: "TACTICAL",
@@ -979,6 +1000,7 @@ function StrategicPillars() {
       badge: "Next-Gen"
     },
     {
+      id: "vigilance-service",
       category: "Nation First",
       word1: "VIGILANCE",
       word2: "SERVICE",
@@ -1009,7 +1031,7 @@ function StrategicPillars() {
             />
           </div>
           <p className="section-subtitle">
-            Hover or tap any card to experience the interactive word swap. The values, doctrine, and tactical pillars of the Indian Army.
+            Hover or tap any card to experience the interactive word swap. Click any pillar to view its complete tactical doctrine dossier.
           </p>
         </div>
 
@@ -1029,6 +1051,7 @@ function StrategicPillars() {
               duration={400}
               stagger={34}
               interval={3000 + idx * 400}
+              onAction={() => onSelectPillar && onSelectPillar(p)}
             />
           ))}
         </div>
@@ -2397,6 +2420,406 @@ function GalleryModal({ item, onClose }) {
 }
 
 /* ==========================================================================
+   STRATEGIC PILLAR DOSSIER MODAL (TACTICAL SECTION INTELLIGENCE VIEW)
+   ========================================================================== */
+
+function PillarModal({ pillar, onClose, onOpenDDMS }) {
+  if (!pillar) return null;
+
+  const [dossier, setDossier] = useState(null);
+
+  // Fallback doctrine profiles matching server/data/store.js
+  const fallbackProfiles = useMemo(() => ({
+    "mission-security": {
+      id: "mission-security",
+      category: "Territorial Defence",
+      badge: "Doctrine",
+      word1: "MISSION",
+      word2: "SECURITY",
+      title: "Mission & Security",
+      desc: "Safeguarding territorial integrity across 15,000+ km of land borders through proactive mountain warfare posture and rapid deterrence.",
+      motto: "सेवा परमो धर्मः — Service Before Self",
+      classification: "RESTRICTED DEFENCE DOCTRINE // SECTION 01",
+      overview: "The primary doctrine of the Indian Army is the unwavering preservation of national sovereignty, territorial integrity, and unity of India against external aggression and internal threats. Operating across the world's most treacherous border terrains—from the icy heights of Siachen to the searing sands of the Thar Desert—the force maintains constant vigilance through forward-deployed formations and active mountain warfare capabilities.",
+      operationalZones: [
+        { name: "Northern Frontier (LOC & LAC)", desc: "High-altitude vigil, extreme sub-zero mountain defence, and glacier command." },
+        { name: "Western Sector (Plains & Deserts)", desc: "Mechanized armoured strike deterrence, radar tracking, and rapid counter-offensive corridors." },
+        { name: "Eastern Sector (Himalayan Ridges)", desc: "Dense jungle warfare, mountain passes, and tri-junction strategic chokepoint security." },
+        { name: "Southern & Island Enclaves", desc: "Peninsular coastal defense, amphibious rapid response, and strategic maritime approaches." }
+      ],
+      doctrineParameters: [
+        { label: "Land Frontier Perimeter", value: "15,106.7 km", sub: "Active border patrolling grid" },
+        { label: "Operational Commands", value: "7 Theatres", sub: "Integrated tactical commands" },
+        { label: "Extreme Altitude Ops", value: "Up to 22,000 ft", sub: "Siachen & Himalayan heights" },
+        { label: "Deterrence Posture", value: "Proactive Defense", sub: "Rapid mobilization response" }
+      ],
+      strategicDirectives: [
+        "Maintain 24/7 uninterrupted visual, thermal, and radar surveillance across all border posts.",
+        "Ensure forward ammunition and logistical depots are sustained with high-altitude reserves.",
+        "Execute synchronized multi-arm border domination patrols with integrated air and artillery support.",
+        "Rapidly neutralize infiltration vectors through proactive counter-intrusion grids."
+      ]
+    },
+    "discipline-valour": {
+      id: "discipline-valour",
+      category: "Military Ethos",
+      badge: "Tradition",
+      word1: "DISCIPLINE",
+      word2: "VALOUR",
+      title: "Discipline & Valour",
+      desc: "Forged in over a century of unparalleled valor, sacrifice, and supreme devotion. Upholding ethical chain-of-command integrity.",
+      motto: "कर्तव्यं अन्वास्ते — Bound by Unflinching Duty & Honour",
+      classification: "MILITARY HERITAGE & ETHOS // SECTION 02",
+      overview: "The ethos of the Indian Army is rooted in unbreakable camaraderie, supreme courage under fire, and ironclad discipline. Over decades of gallantry—from the snow-capped cliffs of Tiger Hill to United Nations peace corridors—officers and soldiers live by the creed of leading from the front ('Follow Me'). The moral foundation guarantees unbending integrity, secular harmony, and adherence to the Chetwode motto.",
+      operationalZones: [
+        { name: "Infantry Regiments", desc: "The bedrock of combat valour: Gorkhas, Sikhs, Grenadiers, Paras, Rajputs, Kumaon, and Garhwal." },
+        { name: "Armoured & Mechanized Columns", desc: "Iron fists on the battleground executing synchronized high-tempo combat maneuvers." },
+        { name: "Special Forces (PARA SF)", desc: "Elite airborne operatives trained for asymmetric warfare, deep raids, and covert hostage rescue." },
+        { name: "Combat Engineers (Sappers)", desc: "Bridging insurmountable chasms, minefield clearance, and building strategic lifeline roads." }
+      ],
+      doctrineParameters: [
+        { label: "Heritage of Valour", value: "125+ Years", sub: "Unbroken martial lineage" },
+        { label: "Param Vir Chakra Citations", value: "21 Heroes", sub: "Highest wartime gallantry honour" },
+        { label: "Chetwode Motto", value: "Honour First", sub: "Safety & welfare of men always" },
+        { label: "Regimental Diversity", value: "Pan-India", sub: "United by one flag, one nation" }
+      ],
+      strategicDirectives: [
+        "Uphold the Chetwode Creed: The safety, honour, and welfare of your country come first, always and every time.",
+        "Foster unit cohesiveness through rigorous physical conditioning and uncompromising regimental pride.",
+        "Instill ethical leadership and constitutional devotion across every level of the chain of command.",
+        "Honor fallen braves and guarantee comprehensive welfare, pension, and medical care for Veer Naris and veterans."
+      ]
+    },
+    "modernization-tech": {
+      id: "modernization-tech",
+      category: "Tactical C4ISR",
+      badge: "Next-Gen",
+      word1: "TECHNOLOGY",
+      word2: "TACTICAL",
+      title: "Modernization & Tech",
+      desc: "Integrating indigenous drone surveillance networks, AI-assisted telemetry, automated QR logistics, and digital DDMS duty rosters.",
+      motto: "प्रौद्योगिकी एवं पराक्रम — Superiority Through Innovation",
+      classification: "ADVANCED DEFENCE TECHNOLOGY // SECTION 03",
+      overview: "Modern warfare demands information superiority and rapid sensor-to-shooter loops. The Indian Army is aggressively undergoing digital transformation through the induction of indigenous unmanned aerial systems, quantum-resistant tactical mesh networks, AI-enabled border surveillance, and the automated DDMS (Duty Deployment & Management System) for algorithmic roster and arms oversight.",
+      operationalZones: [
+        { name: "Unmanned Systems & Swarm Drones", desc: "Long-endurance tactical UAVs, tethered aerial sensors, and autonomous loitering munitions." },
+        { name: "Digital DDMS Roster Operations", desc: "Automated guard post manning, rest-cycle matrix monitoring, and instant QR ordnance validation." },
+        { name: "Tactical Communications Network (TCN)", desc: "Jam-resistant 256-bit encrypted field radio, optical fibre grids, and secure SATCOM downlinks." },
+        { name: "Cyber & Electronic Warfare Command", desc: "Protection of sovereign defence clouds, spectrum domination, and offensive cyber countermeasures." }
+      ],
+      doctrineParameters: [
+        { label: "Encryption Security", value: "256-Bit SHA", sub: "Restricted military cryptographic node" },
+        { label: "DDMS Duty Management", value: "Automated", sub: "Zero-error fatigue tracking & QR arms" },
+        { label: "Atmanirbhar Induction", value: "85%+ Indigenous", sub: "Drones, rifles, sensors & artillery" },
+        { label: "Sensor Fusion Loop", value: "Sub-Second", sub: "Unified C4ISR common operational picture" }
+      ],
+      strategicDirectives: [
+        "Accelerate the fielding of indigenous tactical electronics and AI reconnaissance algorithms.",
+        "Mandate automated DDMS duty rosters across guard posts to prevent soldier fatigue and assure alert compliance.",
+        "Enforce tamper-evident cryptographic QR scans on all weapon issues and ammunition depot transactions.",
+        "Harden command-and-control servers against advanced electronic countermeasures and distributed cyber incursions."
+      ]
+    },
+    "vigilance-service": {
+      id: "vigilance-service",
+      category: "Nation First",
+      badge: "24/7 Vigil",
+      word1: "VIGILANCE",
+      word2: "SERVICE",
+      title: "Vigilance & Service",
+      desc: "Providing round-the-clock humanitarian disaster relief (HADR), civil defense support, and leading global peacekeeping deployments.",
+      motto: "सर्वदा सन्नद्धाः — Always Prepared Everywhere in Crisis",
+      classification: "NATION BUILDING & HADR // SECTION 04",
+      overview: "Beyond combat deterrence, the Indian Army is the nation's premier instrument of crisis response. Whether executing immediate Humanitarian Assistance & Disaster Relief (HADR) during floods, earthquakes, and cyclones, or winning hearts and minds through Project Sadbhavana in remote border zones, the soldier stands as the ultimate guardian and protector of civilian lives.",
+      operationalZones: [
+        { name: "HADR Disaster Task Forces", desc: "Rapid deployment column with amphibious boats, mobile field hospitals, and water purification units." },
+        { name: "Operation Sadbhavana", desc: "Army goodwill schools, vocational training, women empowerment centers, and free medical camps." },
+        { name: "Border Infrastructure (BRO)", desc: "Construction of world's highest motorable passes, all-weather tunnels, and strategic frontier bridges." },
+        { name: "United Nations Peacekeeping", desc: "Blue Helmet contingents defending vulnerable populations across Africa, Middle East, and worldwide." }
+      ],
+      doctrineParameters: [
+        { label: "HADR Response Time", value: "< 60 Minutes", sub: "First responders in civil crises" },
+        { label: "UN Missions Served", value: "53+ Deployments", sub: "Over 200,000 Indian peacekeepers deployed" },
+        { label: "Sadbhavana Schools", value: "40+ Institutes", sub: "Empowering frontier youth with education" },
+        { label: "Civil Defense Readiness", value: "24/7/365 Standby", sub: "Constant pan-India vigilance status" }
+      ],
+      strategicDirectives: [
+        "Maintain standby Humanitarian Assistance & Disaster Relief (HADR) columns at every cantonment.",
+        "Deepen civil-military coordination for rapid disaster mitigation, medical rescue, and supply drops.",
+        "Expand Project Sadbhavana education and healthcare outposts to strengthen border community resilience.",
+        "Uphold India's distinguished international prestige as a compassionate, professional UN peacekeeping pillar."
+      ]
+    }
+  }), []);
+
+  useEffect(() => {
+    let mounted = true;
+    const pId = pillar.id || (pillar.title ? pillar.title.toLowerCase().replace(/[^a-z0-9]/g, '-') : "mission-security");
+    const base = fallbackProfiles[pId] || fallbackProfiles["mission-security"];
+
+    setDossier(base);
+
+    // Asynchronously align with backend REST API if available
+    DefenceAPI.getPillarDetails(pId).then(apiData => {
+      if (mounted && apiData) {
+        setDossier(prev => ({
+          ...prev,
+          ...apiData,
+          backendSynced: true
+        }));
+      }
+    }).catch(() => {});
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      mounted = false;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [pillar, fallbackProfiles, onClose]);
+
+  const activeData = dossier || fallbackProfiles[pillar.id] || fallbackProfiles["mission-security"];
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div 
+        className="modal-dialog hud-corner" 
+        style={{ 
+          maxWidth: 780, 
+          maxHeight: '92vh', 
+          display: 'flex', 
+          flexDirection: 'column',
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--line-gold)',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.85), 0 0 30px rgba(197, 160, 89, 0.2)'
+        }} 
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Modal Header */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          padding: '16px 22px', 
+          borderBottom: '1px solid var(--line)',
+          background: 'var(--bg-panel-2)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span className="chip chip-gold" style={{ fontSize: 10 }}>{activeData.badge}</span>
+            <span className="eyebrow" style={{ color: 'var(--gold)', letterSpacing: '0.12em' }}>
+              {activeData.classification || "RESTRICTED DEFENCE DOCTRINE // SECTION DOSSIER"}
+            </span>
+          </div>
+          <button 
+            onClick={onClose} 
+            title="Close Dossier (Esc)"
+            style={{ 
+              width: 32, 
+              height: 32, 
+              background: 'rgba(255,255,255,0.06)', 
+              border: '1px solid var(--line)', 
+              color: 'var(--ink-bright)', 
+              borderRadius: '50%', 
+              cursor: 'pointer', 
+              fontSize: 15,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(235, 87, 87, 0.25)'; e.currentTarget.style.color = '#ff8888'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'var(--ink-bright)'; }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Modal Body - Scrollable */}
+        <div style={{ padding: '22px 24px', overflowY: 'auto', flex: 1 }}>
+          {/* Hero Banner with Word Swap */}
+          <div style={{
+            background: 'radial-gradient(ellipse at 50% 0%, rgba(197, 160, 89, 0.18) 0%, rgba(9, 16, 11, 0.95) 100%)',
+            border: '1px solid rgba(197, 160, 89, 0.4)',
+            borderRadius: 'var(--radius-sm)',
+            padding: '24px 20px',
+            textAlign: 'center',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            <div style={{ marginBottom: 4 }}>
+              <FlippingWordSwap
+                word1={activeData.word1}
+                word2={activeData.word2}
+                duration={380}
+                stagger={30}
+                style={{
+                  fontSize: 'clamp(1.9rem, 3.6vw, 2.5rem)',
+                  fontWeight: 800,
+                  letterSpacing: '0.05em',
+                  fontFamily: 'var(--font-display)',
+                  color: '#ffffff',
+                  textShadow: '0 0 24px rgba(223, 186, 116, 0.5), 0 2px 10px rgba(0, 0, 0, 0.95)'
+                }}
+              />
+            </div>
+            <h2 className="heading-section" style={{ fontSize: '1.45rem', marginTop: 10, marginBottom: 4, color: 'var(--ink-bright)' }}>
+              {activeData.title}
+            </h2>
+            <div className="hero-sanskrit" style={{ fontSize: 13, color: 'var(--gold-light)' }}>
+              {activeData.motto}
+            </div>
+          </div>
+
+          {/* Live Telemetry Node Sync Strip */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '10px 14px',
+            background: 'var(--bg-panel-2)',
+            border: '1px solid var(--line)',
+            borderRadius: 'var(--radius-xs)',
+            margin: '16px 0 20px',
+            fontFamily: 'var(--font-mono)',
+            fontSize: '11px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="radar-ping" style={{ width: 6, height: 6 }}></span>
+              <span style={{ color: 'var(--success)', fontWeight: 600 }}>
+                {activeData.liveTelemetry ? 'LIVE BACKEND REST SYNC // OPERATIONAL' : 'INTEGRATED DEFENCE REST CLIENT'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 14, color: 'var(--steel)' }}>
+              <span>READINESS: <strong style={{ color: 'var(--gold-light)' }}>{activeData.liveTelemetry?.readinessStatus ?? "100%"}</strong></span>
+              <span>NODE: <strong style={{ color: 'var(--ink-bright)' }}>DEL-09-TACTICAL</strong></span>
+            </div>
+          </div>
+
+          {/* Mission Briefing */}
+          <div style={{ marginBottom: 22 }}>
+            <div className="mono text-gold" style={{ fontSize: 11, letterSpacing: '.1em', marginBottom: 6 }}>
+              TACTICAL DOCTRINE BRIEFING
+            </div>
+            <p style={{ fontSize: '14px', lineHeight: 1.65, color: 'var(--ink)' }}>
+              {activeData.overview || activeData.desc}
+            </p>
+          </div>
+
+          {/* Doctrine Parameters Grid */}
+          {activeData.doctrineParameters && activeData.doctrineParameters.length > 0 && (
+            <div style={{ marginBottom: 22 }}>
+              <div className="mono text-gold" style={{ fontSize: 11, letterSpacing: '.1em', marginBottom: 8 }}>
+                OPERATIONAL PARAMETERS & STANDARDS
+              </div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                gap: 12
+              }}>
+                {activeData.doctrineParameters.map((param, pIdx) => (
+                  <div key={pIdx} style={{
+                    background: 'var(--bg-panel)',
+                    border: '1px solid var(--line)',
+                    borderRadius: 'var(--radius-xs)',
+                    padding: '12px 14px'
+                  }}>
+                    <div className="mono text-dim" style={{ fontSize: 10, textTransform: 'uppercase' }}>{param.label}</div>
+                    <div className="disp text-gold" style={{ fontSize: 17, fontWeight: 800, margin: '4px 0 2px' }}>{param.value}</div>
+                    <div className="mono text-dim" style={{ fontSize: 10.5 }}>{param.sub}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Deployment Domains */}
+          {activeData.operationalZones && activeData.operationalZones.length > 0 && (
+            <div style={{ marginBottom: 22 }}>
+              <div className="mono text-gold" style={{ fontSize: 11, letterSpacing: '.1em', marginBottom: 8 }}>
+                TACTICAL DEPLOYMENT DOMAINS
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 10 }}>
+                {activeData.operationalZones.map((zone, zIdx) => (
+                  <div key={zIdx} style={{
+                    background: 'var(--bg-panel-2)',
+                    border: '1px solid var(--line)',
+                    borderRadius: 'var(--radius-xs)',
+                    padding: '10px 12px'
+                  }}>
+                    <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--ink-bright)', marginBottom: 3 }}>
+                      {zone.name}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--ink-dim)', lineHeight: 1.45 }}>
+                      {zone.desc}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Strategic Directives */}
+          {activeData.strategicDirectives && activeData.strategicDirectives.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div className="mono text-gold" style={{ fontSize: 11, letterSpacing: '.1em', marginBottom: 8 }}>
+                STRATEGIC COMBAT DIRECTIVES & MANDATES
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {activeData.strategicDirectives.map((directive, dIdx) => (
+                  <div key={dIdx} style={{
+                    display: 'flex',
+                    gap: 10,
+                    alignItems: 'flex-start',
+                    background: 'rgba(255,255,255,0.02)',
+                    borderLeft: '2px solid var(--gold)',
+                    padding: '9px 12px',
+                    borderRadius: '0 var(--radius-xs) var(--radius-xs) 0'
+                  }}>
+                    <span style={{ color: 'var(--gold)', fontSize: 12, marginTop: 1 }}>✦</span>
+                    <span style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.5 }}>{directive}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Modal Footer */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '14px 22px',
+          borderTop: '1px solid var(--line)',
+          background: 'var(--bg-panel-2)'
+        }}>
+          <div>
+            {onOpenDDMS && (
+              <button 
+                className="btn btn-secondary btn-sm"
+                onClick={onOpenDDMS}
+                style={{ fontSize: 11.5 }}
+              >
+                <IconShield /> ACCESS DDMS COMMAND DESK
+              </button>
+            )}
+          </div>
+          <button 
+            className="btn btn-primary btn-sm"
+            onClick={onClose}
+            style={{ fontSize: 11.5, minWidth: 120 }}
+          >
+            CLOSE DOSSIER
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ==========================================================================
    NOTICES & DIRECTIVES (GAZETTE)
    ========================================================================== */
 
@@ -2548,6 +2971,7 @@ function App() {
   const [portalMode, setPortalMode] = useState('overview'); // 'overview' (Public Portal) or 'ddms' (DDMS Command Suite)
   const [user, setUser] = useState("JC-118820P Hav Rawat, V.");
   const [selectedGalleryItem, setSelectedGalleryItem] = useState(null);
+  const [selectedPillar, setSelectedPillar] = useState(null);
 
   // Live Telemetry State connected to Express REST API
   const [telemetry, setTelemetry] = useState({
@@ -2659,7 +3083,7 @@ function App() {
         />
 
         {/* 2. Strategic Pillars */}
-        <StrategicPillars />
+        <StrategicPillars onSelectPillar={setSelectedPillar} />
 
         {/* 3. Commands & Structure */}
         <CommandsSection />
@@ -2693,8 +3117,18 @@ function App() {
       {/* Footer */}
       <Footer />
 
-      {/* Modal Lightbox */}
+      {/* Modal Lightboxes */}
       <GalleryModal item={selectedGalleryItem} onClose={() => setSelectedGalleryItem(null)} />
+      <PillarModal
+        pillar={selectedPillar}
+        onClose={() => setSelectedPillar(null)}
+        onOpenDDMS={() => {
+          setSelectedPillar(null);
+          setPortalMode('ddms');
+          const el = document.getElementById('ddms-section');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }}
+      />
     </div>
   );
 }

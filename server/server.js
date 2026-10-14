@@ -13,6 +13,7 @@ const rosterRouter = require('./routes/roster');
 const weaponsRouter = require('./routes/weapons');
 const personnelRouter = require('./routes/personnel');
 const reportsRouter = require('./routes/reports');
+const pillarsRouter = require('./routes/pillars');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -64,7 +65,9 @@ app.get('/api', (req, res) => {
       "GET  /api/personnel",
       "POST /api/personnel/status",
       "GET  /api/reports",
-      "POST /api/reports/generate"
+      "POST /api/reports/generate",
+      "GET  /api/pillars",
+      "GET  /api/pillars/:id"
     ]
   });
 });
@@ -76,6 +79,7 @@ app.use('/api/roster', rosterRouter);
 app.use('/api/weapons', weaponsRouter);
 app.use('/api/personnel', personnelRouter);
 app.use('/api/reports', reportsRouter);
+app.use('/api/pillars', pillarsRouter);
 
 // Fallback error handler
 app.use((err, req, res, next) => {
