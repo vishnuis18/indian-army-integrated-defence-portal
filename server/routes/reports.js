@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const crypto = require('crypto');
 const store = require('../data/store');
 
 /**
@@ -9,9 +8,61 @@ const store = require('../data/store');
  */
 router.get('/', (req, res) => {
   try {
+    const logs = store.getAuditLogs();
     res.json({
       success: true,
-      data: store.auditLogs
+      data: logs
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * GET /api/reports/unit-summary
+ * Get unit-wise and rank-wise strength breakdown
+ */
+router.get('/unit-summary', (req, res) => {
+  try {
+    const units = store.getUnits();
+    const personnel = store.getPersonnel();
+    
+    const rankDistribution = {};
+    personnel.forEach(p => {
+      rankDistribution[p.rank] = (rankDistribution[p.rank] || 0) + 1;
+    });
+
+    res.json({
+      success: true,
+      generatedAt: new Date().toISOString(),
+      baseInfo: store.getBaseInfo(),
+      totalUnits: units.length,
+      totalPersonnel: personnel.length,
+      units,
+      rankDistribution
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * GET /api/reports/equipment-audit
+ * Get controlled equipment custody and reconciliation report
+ */
+router.get('/equipment-audit', (req, res) => {
+  try {
+    const items = store.getControlledItems();
+    const transactions = store.getCustodyTransactions();
+
+    res.json({
+      success: true,
+      generatedAt: new Date().toISOString(),
+      totalControlledItems: items.length,
+      issuedCount: items.filter(i => i.status === 'ISSUED').length,
+      armouryCount: items.filter(i => i.status === 'IN ARMOURY').length,
+      items,
+      recentTransactions: transactions.slice(0, 10)
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -29,21 +80,11 @@ router.post('/generate', (req, res) => {
       return res.status(400).json({ success: false, error: "Action description required" });
     }
 
-    const hash = crypto.randomBytes(4).toString('hex') + '...' + crypto.randomBytes(4).toString('hex');
-    const newLog = {
-      time: new Date().toLocaleTimeString('en-GB') + ' IST',
-      action,
-      operator,
-      category,
-      hash
-    };
-
-    store.auditLogs.unshift(newLog);
+    const newLog = store.logAudit(action, operator, category);
 
     res.json({
       success: true,
       data: newLog,
-      logs: store.auditLogs,
       message: "Security log gazetted"
     });
   } catch (err) {

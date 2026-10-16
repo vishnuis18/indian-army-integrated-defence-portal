@@ -34,37 +34,15 @@ router.get('/manning-chart', (req, res) => {
  */
 router.get('/alerts', (req, res) => {
   try {
-    res.json({ success: true, data: store.alerts });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-/**
- * POST /api/dashboard/alerts
- * Add new operational alert
- */
-router.post('/alerts', (req, res) => {
-  try {
-    const { text, severity } = req.body;
-    if (!text) {
-      return res.status(400).json({ success: false, error: "Alert text required" });
-    }
-    const updated = store.addAlert(text, severity);
-    res.json({ success: true, data: updated });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-/**
- * DELETE /api/dashboard/alerts/:id
- * Dismiss alert by ID
- */
-router.delete('/alerts/:id', (req, res) => {
-  try {
-    const updated = store.dismissAlert(req.params.id);
-    res.json({ success: true, data: updated });
+    // Generate alerts dynamically from audit logs and personnel status
+    const logs = store.getAuditLogs().slice(0, 5);
+    const alerts = logs.map((log, idx) => ({
+      id: `ALT-${idx}`,
+      text: log.action,
+      time: log.time,
+      severity: log.category === 'DUTY' ? 'WARN' : log.category === 'EQUIPMENT' ? 'ALERT' : 'INFO'
+    }));
+    res.json({ success: true, data: alerts });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

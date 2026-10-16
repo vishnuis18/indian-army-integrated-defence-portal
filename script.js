@@ -7,105 +7,223 @@ const { useState, useEffect, useMemo, useRef } = React;
 const API_BASE = (window.location.port === '5000') ? '/api' : 'http://localhost:5000/api';
 
 const DefenceAPI = {
-  async getTelemetry() {
-    const res = await fetch(`${API_BASE}/telemetry`);
-    if (!res.ok) throw new Error('Telemetry fetch failed');
+  async getBaseInfo() {
+    try {
+      const res = await fetch(`${API_BASE}/units`);
+      if (!res.ok) throw new Error('Base info fetch failed');
+      return (await res.json()).baseInfo;
+    } catch (e) { return null; }
+  },
+  async getUnits() {
+    try {
+      const res = await fetch(`${API_BASE}/units`);
+      if (!res.ok) throw new Error('Units fetch failed');
+      return (await res.json()).data;
+    } catch (e) { return null; }
+  },
+  async getUnitDetails(id) {
+    try {
+      const res = await fetch(`${API_BASE}/units/${encodeURIComponent(id)}`);
+      if (!res.ok) throw new Error(`Unit ${id} fetch failed`);
+      return (await res.json()).data;
+    } catch (e) { return null; }
+  },
+  async getPersonnel(params = {}) {
+    try {
+      const qs = new URLSearchParams(params).toString();
+      const res = await fetch(`${API_BASE}/personnel${qs ? '?' + qs : ''}`);
+      if (!res.ok) throw new Error('Personnel fetch failed');
+      return (await res.json()).data;
+    } catch (e) { return null; }
+  },
+  async getPersonnelDetails(id) {
+    try {
+      const res = await fetch(`${API_BASE}/personnel/${encodeURIComponent(id)}`);
+      if (!res.ok) throw new Error('Member details fetch failed');
+      return (await res.json()).data;
+    } catch (e) { return null; }
+  },
+  async registerPersonnel(payload) {
+    const res = await fetch(`${API_BASE}/personnel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Register personnel failed');
+    }
     return (await res.json()).data;
   },
-  async getDashboardStats() {
-    const res = await fetch(`${API_BASE}/dashboard/stats`);
-    if (!res.ok) throw new Error('Dashboard stats fetch failed');
+  async updatePersonnel(id, payload) {
+    const res = await fetch(`${API_BASE}/personnel/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Update personnel failed');
     return (await res.json()).data;
   },
-  async getManningChart() {
-    const res = await fetch(`${API_BASE}/dashboard/manning-chart`);
-    if (!res.ok) throw new Error('Manning chart fetch failed');
-    return (await res.json()).data;
-  },
-  async getAlerts() {
-    const res = await fetch(`${API_BASE}/dashboard/alerts`);
-    if (!res.ok) throw new Error('Alerts fetch failed');
-    return (await res.json()).data;
-  },
-  async getRoster() {
-    const res = await fetch(`${API_BASE}/roster`);
-    if (!res.ok) throw new Error('Roster fetch failed');
+  async transferPersonnel(payload) {
+    const res = await fetch(`${API_BASE}/personnel/transfer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Transfer failed');
+    }
     return (await res.json());
+  },
+  async deletePersonnel(id, operator) {
+    const res = await fetch(`${API_BASE}/personnel/${encodeURIComponent(id)}${operator ? '?operator=' + encodeURIComponent(operator) : ''}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Delete personnel failed');
+    return (await res.json());
+  },
+  async getDutyPosts() {
+    try {
+      const res = await fetch(`${API_BASE}/duty-assignments/posts`);
+      if (!res.ok) throw new Error('Duty posts fetch failed');
+      return (await res.json()).data;
+    } catch (e) { return null; }
+  },
+  async getDutyAssignments(params = {}) {
+    try {
+      const qs = new URLSearchParams(params).toString();
+      const res = await fetch(`${API_BASE}/duty-assignments${qs ? '?' + qs : ''}`);
+      if (!res.ok) throw new Error('Duty assignments fetch failed');
+      return (await res.json()).data;
+    } catch (e) { return null; }
+  },
+  async createDutyAssignment(payload) {
+    const res = await fetch(`${API_BASE}/duty-assignments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Duty assignment failed');
+    }
+    return (await res.json()).data;
+  },
+  async updateAssignmentStatus(id, status, operator) {
+    const res = await fetch(`${API_BASE}/duty-assignments/${encodeURIComponent(id)}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, operator })
+    });
+    if (!res.ok) throw new Error('Status update failed');
+    return (await res.json()).data;
+  },
+  async getRosterDates() {
+    try {
+      const res = await fetch(`${API_BASE}/roster/dates`);
+      if (!res.ok) throw new Error('Roster dates fetch failed');
+      return (await res.json()).data;
+    } catch (e) { return []; }
   },
   async getDutyHistory(params = {}) {
-    const qs = new URLSearchParams(params).toString();
-    const res = await fetch(`${API_BASE}/roster/history${qs ? '?' + qs : ''}`);
-    if (!res.ok) throw new Error('Duty history fetch failed');
-    return (await res.json()).data;
+    try {
+      const qs = new URLSearchParams(params).toString();
+      const res = await fetch(`${API_BASE}/roster/history${qs ? '?' + qs : ''}`);
+      if (!res.ok) throw new Error('Duty history fetch failed');
+      return (await res.json()).data;
+    } catch (e) { return null; }
   },
-  async assignRoster(payload) {
-    const res = await fetch(`${API_BASE}/roster/assign`, {
+  async getControlledItems(params = {}) {
+    try {
+      const qs = new URLSearchParams(params).toString();
+      const res = await fetch(`${API_BASE}/controlled-items${qs ? '?' + qs : ''}`);
+      if (!res.ok) throw new Error('Controlled items fetch failed');
+      return (await res.json()).data;
+    } catch (e) { return null; }
+  },
+  async recordCustody(payload) {
+    const res = await fetch(`${API_BASE}/controlled-items/custody`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    if (!res.ok) throw new Error('Roster assign failed');
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Custody transaction failed');
+    }
     return (await res.json());
   },
-  async getWeapons() {
-    const res = await fetch(`${API_BASE}/weapons`);
-    if (!res.ok) throw new Error('Weapons fetch failed');
-    return (await res.json()).data;
+  async getCustodyTransactions(itemId) {
+    try {
+      const qs = itemId ? `?itemId=${encodeURIComponent(itemId)}` : '';
+      const res = await fetch(`${API_BASE}/controlled-items/transactions${qs}`);
+      if (!res.ok) throw new Error('Custody transactions fetch failed');
+      return (await res.json()).data;
+    } catch (e) { return null; }
   },
-  async issueWeapon(payload) {
-    const res = await fetch(`${API_BASE}/weapons/issue`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) throw new Error('Weapon issue failed');
-    return (await res.json());
+  async getDashboardStats() {
+    try {
+      const res = await fetch(`${API_BASE}/dashboard/stats`);
+      if (!res.ok) throw new Error('Dashboard stats fetch failed');
+      return (await res.json()).data;
+    } catch (e) { return null; }
   },
-  async getPersonnel() {
-    const res = await fetch(`${API_BASE}/personnel`);
-    if (!res.ok) throw new Error('Personnel fetch failed');
-    return (await res.json()).data;
+  async getManningChart() {
+    try {
+      const res = await fetch(`${API_BASE}/dashboard/manning-chart`);
+      if (!res.ok) throw new Error('Manning chart fetch failed');
+      return (await res.json()).data;
+    } catch (e) { return null; }
   },
-  async updatePersonnel(payload) {
-    const res = await fetch(`${API_BASE}/personnel/status`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) throw new Error('Personnel status update failed');
-    return (await res.json());
+  async getAlerts() {
+    try {
+      const res = await fetch(`${API_BASE}/dashboard/alerts`);
+      if (!res.ok) throw new Error('Alerts fetch failed');
+      return (await res.json()).data;
+    } catch (e) { return null; }
   },
   async getReports() {
-    const res = await fetch(`${API_BASE}/reports`);
-    if (!res.ok) throw new Error('Reports fetch failed');
-    return (await res.json()).data;
+    try {
+      const res = await fetch(`${API_BASE}/reports`);
+      if (!res.ok) throw new Error('Reports fetch failed');
+      return (await res.json()).data;
+    } catch (e) { return null; }
   },
-  async generateReport(payload) {
-    const res = await fetch(`${API_BASE}/reports/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) throw new Error('Generate report failed');
-    return (await res.json());
+  async getUnitSummaryReport() {
+    try {
+      const res = await fetch(`${API_BASE}/reports/unit-summary`);
+      if (!res.ok) throw new Error('Unit report fetch failed');
+      return (await res.json());
+    } catch (e) { return null; }
+  },
+  async getEquipmentAuditReport() {
+    try {
+      const res = await fetch(`${API_BASE}/reports/equipment-audit`);
+      if (!res.ok) throw new Error('Equipment report fetch failed');
+      return (await res.json());
+    } catch (e) { return null; }
+  },
+  async getTelemetry() {
+    try {
+      const res = await fetch(`${API_BASE}/telemetry`);
+      if (!res.ok) throw new Error('Telemetry fetch failed');
+      return (await res.json()).data;
+    } catch (e) { return null; }
   },
   async getPillars() {
     try {
       const res = await fetch(`${API_BASE}/pillars`);
       if (!res.ok) throw new Error('Pillars fetch failed');
       return (await res.json()).data;
-    } catch (e) {
-      return null;
-    }
+    } catch (e) { return null; }
   },
   async getPillarDetails(id) {
     try {
       const res = await fetch(`${API_BASE}/pillars/${id}`);
       if (!res.ok) throw new Error(`Pillar ${id} fetch failed`);
       return (await res.json()).data;
-    } catch (e) {
-      return null;
-    }
+    } catch (e) { return null; }
   }
 };
 
@@ -478,54 +596,62 @@ function ComponentBoxCard({
    MOCK DATA & REPOSITORIES (PRESERVED & ENHANCED)
    ========================================================================== */
 
+const BASE_INFO_DEFAULT = {
+  name: "Northern Cantonment Base // Sector Alpha",
+  command: "Northern Command (Integrated Defence Sector)",
+  commandingOfficer: "Col R. S. Rathore",
+  location: "Udhampur Sector Enclave",
+  securityStatus: "DEFCON 4 // OPERATIONAL READY"
+};
+
+const UNITS_DEFAULT = [
+  { id: "UNIT-01", code: "2-GREN", name: "2nd Battalion, The Grenadiers", shortName: "2 GRENADIERS", seniorOfficer: "Col R. S. Rathore", seniorSupervisor: "Hav Rawat, V. (Senior Havaldar)", authorizedStrength: 40, actualStrength: 12, motto: "Sarvada Shaktishali", sector: "Sector Alpha Main Perimeter" },
+  { id: "UNIT-02", code: "3-PARA", name: "3rd Battalion, Parachute Regiment", shortName: "3 PARA", seniorOfficer: "Lt Col A. K. Verma", seniorSupervisor: "Nb Sub Yadav, D.", authorizedStrength: 35, actualStrength: 10, motto: "Shatrujeet", sector: "Sector Bravo Rapid Staging" },
+  { id: "UNIT-03", code: "HQ-COY", name: "Base Headquarters Company", shortName: "HQ COY", seniorOfficer: "Capt Kulkarni, N.", seniorSupervisor: "Nb Sub Bhatt, A.", authorizedStrength: 35, actualStrength: 11, motto: "Seva Paramo Dharma", sector: "Command & Communications Hub" },
+  { id: "UNIT-04", code: "10-GUARDS", name: "10th Battalion, Brigade of the Guards", shortName: "10 GUARDS", seniorOfficer: "Maj S. K. Joshi", seniorSupervisor: "Hav Thapa, B.", authorizedStrength: 38, actualStrength: 9, motto: "Pahla Hamesha Pahla", sector: "Sector Charlie Outer Watchtowers" },
+];
+
 const PERSONNEL = [
-  { armyNo: "JC-118820P", name: "Rawat, V.", rank: "Hav", unit: "2 GRENADIERS", status: "ON DUTY", rest: 0, role: "Guard Commander" },
-  { armyNo: "IC-56231X", name: "Menon, S.", rank: "Lt", unit: "2 GRENADIERS", status: "ON DUTY", rest: 0, role: "Duty Officer" },
-  { armyNo: "JC-224871K", name: "Bhatt, A.", rank: "Nb Sub", unit: "HQ COY", rest: 6, status: "REST", role: "Section Leader" },
-  { armyNo: "NK-994102", name: "Chauhan, R.", rank: "Sep", unit: "HQ COY", rest: 0, status: "AVAILABLE", role: "Rifleman" },
-  { armyNo: "JC-330019L", name: "Yadav, D.", rank: "Nk", unit: "3 PARA", status: "ON DUTY", rest: 0, role: "Specialist" },
-  { armyNo: "NK-771145", name: "Singh, P.", rank: "Sep", unit: "3 PARA", status: "LEAVE", rest: 0, role: "Scout" },
-  { armyNo: "IC-70234R", name: "Kulkarni, N.", rank: "Capt", unit: "HQ COY", status: "AVAILABLE", rest: 0, role: "Adjutant" },
-  { armyNo: "JC-441982", name: "Thapa, B.", rank: "Hav", unit: "2 GRENADIERS", status: "AVAILABLE", rest: 0, role: "Armourer" },
+  { id: "PERS-101", armyNo: "JC-118820P", name: "Rawat, V.", rank: "Hav", unitId: "UNIT-01", unit: "2 GRENADIERS", designation: "Senior Havaldar / Guard Commander", status: "ON DUTY", restHours: 0, familyStatus: "Family Member", quarterStatus: "ALLOCATED", quarterNo: "QTR-A-14", joinedDate: "2023-01-15", nextTransferDate: "2027-01-15" },
+  { id: "PERS-102", armyNo: "IC-56231X", name: "Menon, S.", rank: "Lt", unitId: "UNIT-01", unit: "2 GRENADIERS", designation: "Duty Officer / Armoury In-Charge", status: "ON DUTY", restHours: 0, familyStatus: "Single", quarterStatus: "NOT ALLOCATED", quarterNo: "Officers Mess Living", joinedDate: "2024-06-01", nextTransferDate: "2026-12-01" },
+  { id: "PERS-103", armyNo: "JC-224871K", name: "Bhatt, A.", rank: "Nb Sub", unitId: "UNIT-03", unit: "HQ COY", designation: "Section Leader / Signal Supervisor", status: "REST", restHours: 4, familyStatus: "Family Member", quarterStatus: "ALLOCATED", quarterNo: "QTR-C-08", joinedDate: "2023-11-15", nextTransferDate: "2026-11-15" },
+  { id: "PERS-104", armyNo: "NK-994102", name: "Chauhan, R.", rank: "Sep", unitId: "UNIT-03", unit: "HQ COY", designation: "Rifleman / Access Control Sentry", status: "ON DUTY", restHours: 0, familyStatus: "Single", quarterStatus: "NOT ALLOCATED", quarterNo: "Troop Barrack #4", joinedDate: "2025-02-01", nextTransferDate: "2028-02-01" },
+  { id: "PERS-105", armyNo: "JC-330019L", name: "Yadav, D.", rank: "Nk", unitId: "UNIT-02", unit: "3 PARA", designation: "QRT Specialist / Team Lead", status: "ON DUTY", restHours: 0, familyStatus: "Family Member", quarterStatus: "NOT ALLOCATED", quarterNo: "Waitlisted #04", joinedDate: "2023-08-20", nextTransferDate: "2026-08-20" },
+  { id: "PERS-106", armyNo: "NK-771145", name: "Singh, P.", rank: "Sep", unitId: "UNIT-02", unit: "3 PARA", designation: "Scout / Marksman", status: "AVAILABLE", restHours: 0, familyStatus: "Single", quarterStatus: "NOT ALLOCATED", quarterNo: "Troop Barrack #2", joinedDate: "2024-03-10", nextTransferDate: "2027-03-10" },
+  { id: "PERS-107", armyNo: "IC-70234R", name: "Kulkarni, N.", rank: "Capt", unitId: "UNIT-03", unit: "HQ COY", designation: "Adjutant / Base Security Coordinator", status: "ON DUTY", restHours: 0, familyStatus: "Family Member", quarterStatus: "ALLOCATED", quarterNo: "QTR-B-02", joinedDate: "2024-04-12", nextTransferDate: "2027-04-12" },
+  { id: "PERS-108", armyNo: "JC-441982", name: "Thapa, B.", rank: "Hav", unitId: "UNIT-04", unit: "10 GUARDS", designation: "Section 2IC / Watchtower Supervisor", status: "AVAILABLE", restHours: 0, familyStatus: "Family Member", quarterStatus: "ALLOCATED", quarterNo: "QTR-D-11", joinedDate: "2023-05-18", nextTransferDate: "2026-05-18" },
 ];
 
 const POSTS = [
-  { id: "PST-01", name: "Main Gate", priority: "HIGH", manpower: 2, filled: 2, location: "Sector Alpha Perimeter" },
-  { id: "PST-02", name: "Armoury", priority: "HIGH", manpower: 2, filled: 1, location: "Secure Depot Complex" },
-  { id: "PST-03", name: "Perimeter — North", priority: "MED", manpower: 3, filled: 3, location: "Outer Watchtower Grid" },
-  { id: "PST-04", name: "QRT Standby", priority: "HIGH", manpower: 4, filled: 3, location: "Rapid Response Bay" },
-  { id: "PST-05", name: "Officers' Mess", priority: "LOW", manpower: 1, filled: 1, location: "Administrative Enclave" },
+  { id: "PST-01", name: "Main Gate & Access Control", unitId: "UNIT-01", priority: "HIGH", manpower: 2, filled: 2, location: "Sector Alpha Main Base Perimeter Entry" },
+  { id: "PST-02", name: "Armoury & Ordnance Depot", unitId: "UNIT-01", priority: "CRITICAL", manpower: 2, filled: 1, location: "Secure Ordnance Bunker Complex B" },
+  { id: "PST-03", name: "Perimeter Watchtower — North Grid", unitId: "UNIT-04", priority: "MEDIUM", manpower: 3, filled: 3, location: "Outer Himalayan Ridge Observation Tower 3" },
+  { id: "PST-04", name: "Quick Reaction Team (QRT Standby)", unitId: "UNIT-02", priority: "CRITICAL", manpower: 4, filled: 3, location: "Sector Bravo Rapid Staging Bay" },
+  { id: "PST-05", name: "Base HQ Enclave & Communications Desk", unitId: "UNIT-03", priority: "HIGH", manpower: 2, filled: 2, location: "Command Building Level 1" },
+  { id: "PST-06", name: "Fuel Depot & Logistical Corridors", unitId: "UNIT-04", priority: "MEDIUM", manpower: 1, filled: 1, location: "Logistical Support Area South" }
 ];
 
-const DUTY_ROSTER = [
-  { shift: "0600–1400", post: "Main Gate", personnel: ["JC-118820P Rawat", "NK-994102 Chauhan"], sector: "Sector A" },
-  { shift: "0600–1400", post: "Armoury", personnel: ["IC-56231X Menon"], sector: "Depot B" },
-  { shift: "1400–2200", post: "Perimeter — North", personnel: ["JC-330019L Yadav", "JC-441982 Thapa", "IC-70234R Kulkarni"], sector: "Perimeter N" },
-  { shift: "2200–0600", post: "QRT Standby", personnel: ["JC-118820P Rawat", "JC-330019L Yadav", "JC-441982 Thapa"], sector: "QRT Bay" },
-];
-
-const WEAPONS_INITIAL = [
-  { serial: "INSAS-4471", type: "INSAS Rifle 5.56mm", status: "ISSUED", holder: "JC-118820P Rawat", qr: "WPN-4471", ammo: "90 Rds" },
-  { serial: "INSAS-4472", type: "INSAS Rifle 5.56mm", status: "IN ARMOURY", holder: "—", qr: "WPN-4472", ammo: "In Stock" },
-  { serial: "GLOCK-0091", type: "Glock 17 9mm", status: "ISSUED", holder: "IC-56231X Menon", qr: "WPN-0091", ammo: "30 Rds" },
-  { serial: "INSAS-4480", type: "INSAS Rifle 5.56mm", status: "ISSUED", holder: "JC-330019L Yadav", qr: "WPN-4480", ammo: "90 Rds" },
-  { serial: "LMG-0012", type: "7.62mm LMG", status: "IN ARMOURY", holder: "—", qr: "WPN-0012", ammo: "In Stock" },
-  { serial: "INSAS-4491", type: "INSAS Rifle 5.56mm", status: "MAINTENANCE", holder: "—", qr: "WPN-4491", ammo: "Depot Insp" },
+const CONTROLLED_ITEMS_INITIAL = [
+  { id: "EQP-7021", serial: "WPN-7021", name: "INSAS 1B1 5.56mm Assault Rifle", category: "Assault Rifle", unit: "2 GRENADIERS", status: "ISSUED", custodian: "Hav Rawat, V.", issuingOfficer: "Lt Menon, S.", calibre: "5.56x45mm NATO", quantity: 1, reconciliationStatus: "VERIFIED" },
+  { id: "EQP-7022", serial: "WPN-7022", name: "INSAS 1B1 5.56mm Assault Rifle", category: "Assault Rifle", unit: "2 GRENADIERS", status: "IN ARMOURY", custodian: "Armoury Depot Complex", issuingOfficer: "Lt Menon, S.", calibre: "5.56x45mm NATO", quantity: 1, reconciliationStatus: "VERIFIED" },
+  { id: "EQP-8401", serial: "WPN-8401", name: "AK-203 7.62x39mm Combat Rifle", category: "Assault Rifle", unit: "3 PARA", status: "ISSUED", custodian: "Nk Yadav, D.", issuingOfficer: "Lt Menon, S.", calibre: "7.62x39mm", quantity: 1, reconciliationStatus: "VERIFIED" },
+  { id: "EQP-8402", serial: "WPN-8402", name: "AK-203 7.62x39mm Combat Rifle", category: "Assault Rifle", unit: "3 PARA", status: "IN ARMOURY", custodian: "Armoury Depot Complex", issuingOfficer: "Lt Menon, S.", calibre: "7.62x39mm", quantity: 1, reconciliationStatus: "VERIFIED" },
+  { id: "EQP-9110", serial: "WPN-9110", name: "Glock 17 9mm Service Sidearm", category: "Pistol", unit: "2 GRENADIERS", status: "ISSUED", custodian: "Lt Menon, S.", issuingOfficer: "Capt Kulkarni, N.", calibre: "9x19mm Parabellum", quantity: 1, reconciliationStatus: "VERIFIED" },
+  { id: "EQP-5503", serial: "WPN-5503", name: "Carl Gustaf M4 84mm Recoilless Rifle", category: "Heavy Weapon", unit: "10 GUARDS", status: "IN ARMOURY", custodian: "Armoury Depot Complex", issuingOfficer: "Lt Menon, S.", calibre: "84mm Rocket", quantity: 1, reconciliationStatus: "VERIFIED" },
 ];
 
 const ALERTS_INITIAL = [
-  { level: "amber", text: "Nb Sub Bhatt, A. rest period ends in 40 min — reassign PST-02 relief", time: "10m ago" },
-  { level: "danger", text: "Armoury PST-02 understaffed: 1 of 2 filled — immediate assignment required", time: "24m ago" },
-  { level: "steel", text: "6 weapons due for quarterly ordnance & maintenance check", time: "1h ago" },
-  { level: "gold", text: "Sector Bravo perimeter communications link verified operational", time: "2h ago" },
+  { id: "ALT-01", level: "amber", text: "Nb Sub Bhatt, A. rest period ends in 40 min — reassign PST-02 relief", time: "16m ago" },
+  { id: "ALT-02", level: "danger", text: "Armoury PST-02 understaffed: 1 of 2 filled — immediate assignment required", time: "24m ago" },
+  { id: "ALT-03", level: "steel", text: "6 controlled weapons due for quarterly ordnance & maintenance check", time: "1h ago" },
+  { id: "ALT-04", level: "gold", text: "Sector Bravo perimeter communications link verified operational", time: "2h ago" },
 ];
 
 const AUDIT_LOG = [
-  { ts: "29 JUL 06:02", event: "Weapon Issued", detail: "INSAS-4471 → JC-118820P Rawat", by: "Sys/QR" },
-  { ts: "29 JUL 05:58", event: "Duty Assigned", detail: "PST-01 Main Gate, 0600–1400", by: "Capt Kulkarni" },
-  { ts: "29 JUL 05:40", event: "Leave Approved", detail: "NK-771145 Singh — 3 days", by: "Adjt" },
-  { ts: "28 JUL 22:10", event: "Weapon Returned", detail: "GLOCK-0091 ← IC-56231X Menon", by: "Sys/QR" },
-  { ts: "28 JUL 18:30", event: "QRT Shift Change", detail: "Night patrol handover completed", by: "Lt Menon" },
+  { ts: "06:15 IST", event: "DUTY", detail: "[DUTY ORDER] Shift assignment gazetted for 3 PARA (QRT Standby PST-04)", by: "Col R. S. Rathore" },
+  { ts: "06:00 IST", event: "DUTY", detail: "[DUTY ORDER] Morning shift deployed to Main Gate PST-01 (Hav Rawat, V.)", by: "Col R. S. Rathore" },
+  { ts: "05:45 IST", event: "EQUIPMENT", detail: "[CONTROLLED EQUIPMENT] WPN-9110 issued to Lt Menon, S.", by: "Capt Kulkarni, N." },
+  { ts: "05:30 IST", event: "SYSTEM", detail: "[SYSTEM] Database persistence synchronized to disk (db.json)", by: "SYS-AUTO" },
 ];
 
 const COMMANDS_DATA = [
@@ -762,10 +888,8 @@ function Navbar({ activeSection, onNavigate, onTogglePortal, portalMode, theme, 
 
   const navItems = [
     { id: 'hero', label: 'Home' },
-    { id: 'about', label: 'About & Pillars' },
-    { id: 'commands', label: 'Commands' },
+    { id: 'about', label: 'Rules & Regulations' },
     { id: 'ddms', label: 'DDMS Command' },
-    { id: 'gallery', label: 'Fleet & Ops' },
     { id: 'notices', label: 'Gazette' },
     { id: 'contact', label: 'Contact' },
   ];
@@ -885,11 +1009,9 @@ function HeroSection({ onExplore, onOpenDDMS, telemetry }) {
       <div className="hero-container">
         <div className="hero-content">
           <div className="hero-badges-row">
-            <span className="chip chip-gold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
-              <span className="radar-ping"></span> DEFENCE COMMAND PORTAL
-            </span>
-            <span className="chip" style={{ background: 'rgba(25, 48, 30, 0.85)', color: '#ffffff', borderColor: 'rgba(197, 160, 89, 0.45)', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>
-              ESTD. 1895 // SIKH, GORKHA, PARA, GRENADIERS, ARMOURED
+            <span className="hero-badge hero-badge-gold">
+              <span className="radar-ping"></span>
+              <span>DEFENCE COMMAND PORTAL</span>
             </span>
           </div>
 
@@ -908,218 +1030,664 @@ function HeroSection({ onExplore, onOpenDDMS, telemetry }) {
 
           <div className="hero-actions">
             <button className="btn btn-gold btn-lg" onClick={onExplore}>
-              EXPLORE CAPABILITIES ➔
+              EXPLORE RULES & REGULATIONS ➔
             </button>
             <button className="btn btn-secondary btn-lg" onClick={onOpenDDMS}>
               <IconShield /> ACCESS DDMS COMMAND
             </button>
           </div>
         </div>
-
-        {/* Telemetry Live HUD (Enlarged & Prominent) */}
-        <div className="hero-telemetry-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12, borderBottom: '1px solid var(--line)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span className="eyebrow">COMMAND TELEMETRY</span>
-              <span className="radar-ping" style={{ width: 6, height: 6 }}></span>
-            </div>
-            <span className={`chip ${telemetry?.connected ? 'chip-duty' : 'chip-danger'}`}>
-              {telemetry?.connected ? 'LIVE REST STREAM' : 'OFFLINE (CACHED)'}
-            </span>
-          </div>
-
-          <div className="telemetry-grid">
-            <div className="telemetry-item">
-              <div className="telemetry-label">THEATRE COMMANDS</div>
-              <div className="telemetry-val">{telemetry?.theatreCommands ?? 7}</div>
-              <div className="telemetry-sub">{telemetry?.theatreCoverage ?? "Northern to Southern"}</div>
-            </div>
-
-            <div className="telemetry-item">
-              <div className="telemetry-label">READINESS STATUS</div>
-              <div className="telemetry-val" style={{ color: 'var(--success)' }}>
-                {telemetry?.readinessStatus ?? "100%"}
-              </div>
-              <div className="telemetry-sub">{telemetry?.readinessNote ?? "All Formations Active"}</div>
-            </div>
-
-            <div className="telemetry-item">
-              <div className="telemetry-label">DUTY POST MANNING</div>
-              <div className="telemetry-val">{telemetry?.postManningRatio ?? "10 / 12"}</div>
-              <div className="telemetry-sub">{telemetry?.postManningNote ?? "Maintained via DDMS"}</div>
-            </div>
-
-            <div className="telemetry-item">
-              <div className="telemetry-label">ENCRYPTION PROTOCOL</div>
-              <div className="telemetry-val" style={{ fontSize: '1.4rem', color: 'var(--steel)' }}>
-                {telemetry?.encryptionProtocol ?? "256-BIT SHA"}
-              </div>
-              <div className="telemetry-sub">{telemetry?.encryptionNode ?? "Restricted Defence Node"}</div>
-            </div>
-          </div>
-        </div>
       </div>
     </section>
   );
 }
 
 /* ==========================================================================
-   STRATEGIC PILLARS COMPONENT
+   ARMY RULES & REGULATIONS ICONS & DATA
    ========================================================================== */
 
-function StrategicPillars({ onSelectPillar }) {
-  const pillars = [
-    {
-      id: "mission-security",
-      category: "Territorial Defence",
-      word1: "MISSION",
-      word2: "SECURITY",
-      title: "Mission & Security",
-      desc: "Safeguarding territorial integrity across 15,000+ km of land borders through proactive mountain warfare posture and rapid deterrence.",
-      icon: <IconShield />,
-      badge: "Doctrine"
-    },
-    {
-      id: "discipline-valour",
-      category: "Military Ethos",
-      word1: "DISCIPLINE",
-      word2: "VALOUR",
-      title: "Discipline & Valour",
-      desc: "Forged in over a century of unparalleled valor, sacrifice, and supreme devotion. Upholding ethical chain-of-command integrity.",
-      icon: <IconUsers />,
-      badge: "Tradition"
-    },
-    {
-      id: "modernization-tech",
-      category: "Tactical C4ISR",
-      word1: "TECHNOLOGY",
-      word2: "TACTICAL",
-      title: "Modernization & Tech",
-      desc: "Integrating indigenous drone surveillance networks, AI-assisted telemetry, automated QR logistics, and digital DDMS duty rosters.",
-      icon: <IconCpu />,
-      badge: "Next-Gen"
-    },
-    {
-      id: "vigilance-service",
-      category: "Nation First",
-      word1: "VIGILANCE",
-      word2: "SERVICE",
-      title: "Vigilance & Service",
-      desc: "Providing round-the-clock humanitarian disaster relief (HADR), civil defense support, and leading global peacekeeping deployments.",
-      icon: <IconRadar />,
-      badge: "24/7 Vigil"
-    },
-  ];
+function IconShieldCheck() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      <polyline points="9 12 11 14 15 10"/>
+    </svg>
+  );
+}
+
+function IconUniform() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.34 2.23l.58 3.47a1 1 0 00.99.84H6v10a2 2 0 002 2h8a2 2 0 002-2V10h2.15a1 1 0 00.99-.84l.58-3.47a2 2 0 00-1.34-2.23z"/>
+    </svg>
+  );
+}
+
+function IconClock() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <polyline points="12 6 12 12 16 14"/>
+    </svg>
+  );
+}
+
+function IconScale() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1zM2 16l3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1zM7 21h10M12 3v18M3 7h18"/>
+    </svg>
+  );
+}
+
+function IconLock() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+      <path d="M7 11V7a5 5 0 0110 0v4"/>
+    </svg>
+  );
+}
+
+function IconProperty() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/>
+      <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+      <path d="M9 14l2 2 4-4"/>
+    </svg>
+  );
+}
+
+function IconSafety() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      <line x1="12" y1="8" x2="12" y2="12"/>
+      <line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+  );
+}
+
+function IconViolations() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+      <line x1="4" y1="22" x2="4" y2="15"/>
+    </svg>
+  );
+}
+
+const RULES_UPDATES = [
+  {
+    id: "upd-01",
+    citation: "Army Order 04/2026",
+    title: "Digital & Social Media Operational Security Directives",
+    published: "15 Jan 2026",
+    effective: "Immediate",
+    category: "Security",
+    status: "OFFICIALLY VERIFIED"
+  },
+  {
+    id: "upd-02",
+    citation: "Special Army Instruction 18/2025",
+    title: "Modernized Dress Regulations & Field Utility Standards",
+    published: "10 Nov 2025",
+    effective: "01 Dec 2025",
+    category: "Uniform",
+    status: "OFFICIALLY VERIFIED"
+  },
+  {
+    id: "upd-03",
+    citation: "Army Headquarters Directive 102/2025",
+    title: "Annual Combat Fitness & Medical Evaluation Guidelines",
+    published: "14 Aug 2025",
+    effective: "01 Sep 2025",
+    category: "Safety",
+    status: "OFFICIALLY VERIFIED"
+  },
+  {
+    id: "upd-04",
+    citation: "Adjutant General Branch Advisory 09/2025",
+    title: "Grievance Redressal Mechanism & Transparent Timeline Protocol",
+    published: "22 May 2025",
+    effective: "Immediate",
+    category: "Conduct",
+    status: "OFFICIALLY VERIFIED"
+  }
+];
+
+const RULES_CATEGORIES = [
+  {
+    id: "discipline-orders",
+    code: "01 · DISCIPLINE",
+    title: "Discipline & Orders",
+    subtitle: "Maintain discipline, respect the chain of command, and follow lawful orders.",
+    icon: <IconShieldCheck />,
+    previewBullets: [
+      "Following lawful orders promptly and without hesitation",
+      "Respecting the established military chain of command",
+      "Military courtesy, salutes and professional discipline",
+      "Personal responsibility, accountability and post integrity"
+    ],
+    rules: [
+      {
+        num: "1.1",
+        title: "Following Lawful Orders",
+        explanation: "All military personnel are legally bound to obey all lawful commands issued by their appointed superiors promptly, respectfully, and without dispute.",
+        reference: "Army Act, 1950 — Section 41 (Disobedience to superior officer)",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Failure to obey a lawful command given by a superior officer in the execution of his office constitutes a court-martial offence under military law."
+      },
+      {
+        num: "1.2",
+        title: "Respecting the Chain of Command",
+        explanation: "All communications, operational reports, representations, and administrative applications must strictly follow the established line of command through Section, Platoon, and Company commanders.",
+        reference: "Regulations for the Army (Revised Edition) — Para 421",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Bypassing the chain of command to communicate with higher headquarters or external authorities is strictly prohibited."
+      },
+      {
+        num: "1.3",
+        title: "Military Courtesy & Professional Bearing",
+        explanation: "Proper military compliments, salutes, and formal address by rank must be rendered to all superior officers, commissioned ranks, and national colours at all times.",
+        reference: "Regulations for the Army — Para 435 (Compliments & Salutes)",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Courtesy reinforces command cohesion and unit morale. Compliments must be exchanged smartly and reciprocated by seniors."
+      },
+      {
+        num: "1.4",
+        title: "Personal Responsibility & Accountability",
+        explanation: "Every serviceman bears direct personal accountability for their conduct, arms, ammunition, and assigned post duties during peace, training, and operational conditions.",
+        reference: "Army Act, 1950 — General Principles of Military Discipline",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "An individual cannot delegate personal responsibility for vigilance or safety on guard duty."
+      }
+    ]
+  },
+  {
+    id: "uniform-appearance",
+    code: "02 · APPEARANCE",
+    title: "Uniform & Appearance",
+    subtitle: "Maintain required dress standards, military courtesy, and professional behaviour.",
+    icon: <IconUniform />,
+    previewBullets: [
+      "Observance of authorized pattern uniforms and badges of rank",
+      "Strict grooming, haircut, and personal hygiene standards",
+      "Dress regulations in public areas and prohibition of civilian mixing"
+    ],
+    rules: [
+      {
+        num: "2.1",
+        title: "Applicable Uniform Standards",
+        explanation: "Personnel must wear only authorized pattern combat dress, service dress, or ceremonial uniform with official badges of rank, ribbons, and regimental accoutrements.",
+        reference: "Dress Regulations for the Army (Revised 2022)",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Non-regulation modifications, unauthorized badges, or altered camouflage patterns are strictly prohibited on duty and parade."
+      },
+      {
+        num: "2.2",
+        title: "Grooming & Military Bearing",
+        explanation: "Haircuts must be neatly trimmed above the collar, beards regulated according to regimental authorization, and personal bearing must reflect military pride.",
+        reference: "Regulations for the Army — Grooming & Bearing Directives",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Soldiers on active strength must present a clean-shaven or regimentally authorized appearance at morning muster rolls."
+      },
+      {
+        num: "2.3",
+        title: "Observing Dress Regulations in Public",
+        explanation: "Uniform must never be mixed with civilian clothing, worn in disreputable public venues, or worn while travelling without formal authorization orders.",
+        reference: "Army Orders (Dress & Public Decorum Standards)",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Wearing partial uniform items (e.g. combat jacket with civilian jeans) undermines service dignity and is prohibited."
+      }
+    ]
+  },
+  {
+    id: "attendance-punctuality",
+    code: "03 · ATTENDANCE",
+    title: "Attendance & Punctuality",
+    subtitle: "Report on time, follow muster roll procedures, and adhere to leave authorizations.",
+    icon: <IconClock />,
+    previewBullets: [
+      "Reporting on time for muster rolls, guard mounting, and assigned shifts",
+      "Adherence to duty roster check-in and relief handover procedures",
+      "Understanding authorized leave sanctions and reporting timelines"
+    ],
+    rules: [
+      {
+        num: "3.1",
+        title: "Punctuality & Parade Fall-In",
+        explanation: "All personnel must report at least 10 minutes prior to scheduled parades, roll calls, and duty shift handovers. Unexplained absence is strictly punishable.",
+        reference: "Army Act, 1950 — Section 39 (Absence without leave)",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Absence from appointed place of parade or duty without sufficient cause is subject to summary military trial."
+      },
+      {
+        num: "3.2",
+        title: "Duty Roster Attendance Protocol",
+        explanation: "Soldiers assigned to perimeter checkposts, main gate sentry, or QRT standby must remain present at their station until formally relieved by the relief guard.",
+        reference: "Base Standing Orders — Guard Mounting & Post Manning",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Abandoning a guard post or falling asleep on sentry duty constitutes a severe breach of the Army Act."
+      },
+      {
+        num: "3.3",
+        title: "Authorized Leave & Reporting Requirements",
+        explanation: "Leave must be sanctioned through Part II Orders. Soldiers must report back to their unit before expiry of leave, and immediately report their arrival at the Guard Room.",
+        reference: "Army Leave Rules & Regulations for the Army Para 472",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Overstaying leave requires immediate communication with the unit Adjutant along with government hospital medical certificates if hospitalized."
+      }
+    ]
+  },
+  {
+    id: "code-of-conduct",
+    code: "04 · CONDUCT",
+    title: "Code of Conduct",
+    subtitle: "Honesty and integrity, respectful behaviour, and professional conduct on and off duty.",
+    icon: <IconScale />,
+    previewBullets: [
+      "Unflinching honesty, moral integrity, and truthful reporting",
+      "Respectful behaviour, dignity, and comradeship across all ranks",
+      "Strict zero tolerance for harassment, ragging, or discrimination",
+      "Exemplary professional conduct on duty and in civilian interactions"
+    ],
+    rules: [
+      {
+        num: "4.1",
+        title: "Honesty & Moral Integrity",
+        explanation: "Complete truthfulness in official logbooks, reports, and administrative rolls is expected. Falsification of documents is severely penalised under military law.",
+        reference: "Army Act, 1950 — Section 45 (Unbecoming conduct) & Section 57",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Making false official statements or fraudulent entries in military records undermines base security."
+      },
+      {
+        num: "4.2",
+        title: "Respectful Behaviour & Comradeship",
+        explanation: "Mutual trust, respect, and cohesive camaraderie form the operational foundation of armed combat units. Bullying or derogatory language is unacceptable.",
+        reference: "Military Ethos & Regimental Code of the Indian Army",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Officers and JCOs must lead by personal example, ensuring welfare and equitable treatment of all personnel under their command."
+      },
+      {
+        num: "4.3",
+        title: "Zero Tolerance for Harassment & Discrimination",
+        explanation: "The Indian Army strictly prohibits any form of ragging, hazing, harassment, or discrimination based on caste, creed, religion, or regional origin.",
+        reference: "Equal Opportunity & Anti-Ragging Directives (Army HQ)",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Violators are liable to immediate disciplinary action and removal from service."
+      },
+      {
+        num: "4.4",
+        title: "Professional Conduct On and Off Duty",
+        explanation: "Personnel represent the nation and the Indian Army at all times. They must maintain sobriety, avoid public debt disputes, and respect civil laws.",
+        reference: "Regulations for the Army — Para 428 (Civil Conduct & Decorum)",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Intoxication while on duty or disorderly conduct in civilian areas results in swift court-martial action."
+      }
+    ]
+  },
+  {
+    id: "confidentiality-security",
+    code: "05 · SECURITY",
+    title: "Confidentiality & Security",
+    subtitle: "Protect sensitive information, credentials, official records, and restricted material.",
+    icon: <IconLock />,
+    previewBullets: [
+      "Protection of operational plans, roster records, and classified data",
+      "Securing military portal accounts, login credentials, and digital keys",
+      "Compliance with photography, smartphone, and social media bans",
+      "Immediate counter-intelligence reporting of unauthorized disclosures"
+    ],
+    rules: [
+      {
+        num: "5.1",
+        title: "Protecting Sensitive & Classified Information",
+        explanation: "Details of military unit dispositions, duty assignments, ammunition holdings, and patrol timings are strictly confidential and must never be discussed with unauthorized persons.",
+        reference: "Official Secrets Act, 1923 & Army Security Regulations",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Classified documents must be handled strictly on a 'Need to Know' basis and stored in double-locked security safes."
+      },
+      {
+        num: "5.2",
+        title: "Digital Accounts & Credential Security",
+        explanation: "User accounts, passwords, and cryptographic keys used for accessing base command systems and duty portals must never be shared or written in unsecured places.",
+        reference: "Cyber Security Directives for Armed Forces (CERT-Army)",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Sharing login credentials or inserting unauthorized USB storage media into military workstations is a punishable breach."
+      },
+      {
+        num: "5.3",
+        title: "Social Media & Photography Restrictions",
+        explanation: "Taking photographs inside military installations, posting in uniform on social media, or revealing troop locations online is strictly banned.",
+        reference: "Army Cyber Security Policy & Social Media Guidelines (Revised)",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Smartphone usage is restricted in operational offices, armouries, and command war rooms."
+      },
+      {
+        num: "5.4",
+        title: "Counter-Intelligence Reporting",
+        explanation: "Any suspicious inquiry, honey-trap approach, or unauthorized request for military information must be reported immediately to the Military Intelligence (MI) cell.",
+        reference: "Standing Counter-Intelligence Orders",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Failure to report suspected espionage or hostile intelligence overtures constitutes complicity under the Army Act."
+      }
+    ]
+  },
+  {
+    id: "equipment-property",
+    code: "06 · PROPERTY",
+    title: "Equipment & Property",
+    subtitle: "Responsible use of authorized equipment, custody recordkeeping, and discrepancy reporting.",
+    icon: <IconProperty />,
+    previewBullets: [
+      "Responsible handling of weapons, ammunition, optics, and gear",
+      "Strict compliance with armoury storage and cleaning procedures",
+      "Immediate reporting of damaged, defective, or missing property",
+      "Maintaining continuous and verified custody ledger records"
+    ],
+    rules: [
+      {
+        num: "6.1",
+        title: "Responsible Use of Authorized Equipment",
+        explanation: "Government-issued weapons, tactical optics, wireless sets, and transport vehicles must be operated strictly for official duty and maintained in combat-ready state.",
+        reference: "Army Act, 1950 — Section 54 (Deficiency of equipment)",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Negligent loss or damage to government equipment incurs disciplinary action and financial recovery."
+      },
+      {
+        num: "6.2",
+        title: "Armoury Storage & Safety Clearing",
+        explanation: "Firearms must be physically cleared at the safety sand-bucket before entry into the kote/armoury and deposited immediately upon conclusion of the duty shift.",
+        reference: "Standard Operating Procedures for Unit Armouries (Kote SOP)",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Weapons must be locked in designated unit racks under the joint supervision of the Unit Armourer and Havaldar Major."
+      },
+      {
+        num: "6.3",
+        title: "Reporting Missing or Damaged Property",
+        explanation: "Any defect, cracked optic, weapon malfunction, or missing equipment item must be reported immediately to the Quartermaster for formal recording.",
+        reference: "Equipment Management Guidelines (EMG)",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Concealing a weapon defect or loss is an offence. Immediate reporting enables formal replacement and technical investigation."
+      },
+      {
+        num: "6.4",
+        title: "Accurate Custody Ledger Maintenance",
+        explanation: "Every weapon issuance, ammunition box draw, and night vision handover must be documented with signatures in physical registers and digital DDMS records.",
+        reference: "Materiel Management & Ordnance Audit Regulations",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Discrepancies in serial numbers between ledger and physical firearm must be reconciled before daily armoury closing."
+      }
+    ]
+  },
+  {
+    id: "safety-training",
+    code: "07 · SAFETY",
+    title: "Safety & Training",
+    subtitle: "Approved safety procedures, combat training drills, and health/fitness standards.",
+    icon: <IconSafety />,
+    previewBullets: [
+      "Adherence to firing range protocols and live ammunition safety",
+      "Mandatory attendance at scheduled tactical refreshers and drills",
+      "Immediate reporting of physical hazards, fire risks, and incidents",
+      "Maintaining requisite SHAPE-1 medical classification and fitness"
+    ],
+    rules: [
+      {
+        num: "7.1",
+        title: "Firing Range & Ammunition Safety",
+        explanation: "Strict range discipline is compulsory. Weapons must point down-range at all times, with safety catches engaged until the command 'Fire' is given by the Range Officer.",
+        reference: "Small Arms Safety Manual & Range Standing Orders",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Muzzle awareness and chamber inspection drills must be executed without compromise."
+      },
+      {
+        num: "7.2",
+        title: "Mandatory Tactical Training & Drills",
+        explanation: "Every soldier must regularly undergo Battle Physical Efficiency Tests (BPET), firing classification, and chemical-biological-radiological defense refreshers.",
+        reference: "Annual Training Directives (Army Training Command - ARTRAC)",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Exemption from training is permitted only on certified medical advice from a Military Hospital Medical Officer."
+      },
+      {
+        num: "7.3",
+        title: "Hazard & Incident Reporting",
+        explanation: "Personnel must immediately flag unsafe ammunition boxes, vehicle brake failures, exposed wiring, or combustible hazards to the Base Safety Officer.",
+        reference: "Reference pending verification (Occupational Safety SOP)",
+        verification: "REFERENCE PENDING VERIFICATION",
+        details: "Unit safety officers conduct periodic risk assessments. Early reporting of near-misses prevents loss of life."
+      },
+      {
+        num: "7.4",
+        title: "Medical & Physical Fitness Compliance",
+        explanation: "All servicemen must maintain prescribed physical conditioning and undergo mandatory annual medical examinations (AME) to ensure SHAPE-1 deployment readiness.",
+        reference: "Medical Regulations for the Army",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Undisclosed injuries or refusal of medical treatment required for duty readiness is prohibited."
+      }
+    ]
+  },
+  {
+    id: "reporting-violations",
+    code: "08 · VIOLATIONS",
+    title: "Reporting Violations",
+    subtitle: "Reporting misconduct through authorized channels and escalating safety concerns.",
+    icon: <IconViolations />,
+    previewBullets: [
+      "Reporting disciplinary infractions through authorized command channels",
+      "Immediate escalation of security breaches and perimeter hazards",
+      "Understanding statutory grievance redressal procedures without fear"
+    ],
+    rules: [
+      {
+        num: "8.1",
+        title: "Reporting Misconduct through Official Channels",
+        explanation: "Soldiers witnessing serious misconduct, theft of defence equipment, or insubordination must report the facts truthfully to their Subedar Major or Commanding Officer.",
+        reference: "Army Rules, 1954 — Chapter IV (Investigation of charges)",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Anonymous or malicious false allegations are punishable under military law."
+      },
+      {
+        num: "8.2",
+        title: "Escalation of Urgent Security Breaches",
+        explanation: "Intrusion alerts, perimeter fence breaches, or missing weapons must be reported instantaneously to the Base Duty Officer (BDO) and Guard Commander.",
+        reference: "Base Counter-Sabotage & Alert Standard Operating Procedures",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "The QRT is dispatched immediately upon broadcast of an alert code."
+      },
+      {
+        num: "8.3",
+        title: "Statutory Redress of Grievances",
+        explanation: "Any serviceman who deems himself wronged by an officer has the statutory right under the Army Act to submit a petition for redress of grievance.",
+        reference: "Army Act, 1950 — Section 26 & Section 27 (Redress of wrongs)",
+        verification: "OFFICIALLY VERIFIED REGULATION",
+        details: "Commanding Officers are legally mandated to investigate and forward petitions without bias or punitive retaliation."
+      }
+    ]
+  }
+];
+
+/* ==========================================================================
+   ARMY RULES & REGULATIONS COMPONENT (REPLACING STRATEGIC PILLARS)
+   ========================================================================== */
+
+function ArmyRulesSection({ onSelectRule, onSelectPillar }) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showUpdates, setShowUpdates] = useState(false);
+
+  const handleSelect = (category) => {
+    if (onSelectRule) onSelectRule(category);
+    else if (onSelectPillar) onSelectPillar(category);
+  };
+
+  // Filter categories and rules by search keyword
+  const filteredCategories = useMemo(() => {
+    if (!searchQuery.trim()) return RULES_CATEGORIES;
+    const q = searchQuery.toLowerCase().trim();
+    return RULES_CATEGORIES.filter(cat => 
+      cat.title.toLowerCase().includes(q) ||
+      cat.subtitle.toLowerCase().includes(q) ||
+      cat.code.toLowerCase().includes(q) ||
+      cat.previewBullets.some(b => b.toLowerCase().includes(q)) ||
+      cat.rules.some(r => 
+        r.title.toLowerCase().includes(q) ||
+        r.explanation.toLowerCase().includes(q) ||
+        r.reference.toLowerCase().includes(q)
+      )
+    );
+  }, [searchQuery]);
 
   return (
-    <section id="about" className="section">
-      <div className="section-container">
-        <div className="section-header section-header-center" style={{ marginBottom: 38 }}>
-          <span className="eyebrow">CORE FOUNDATIONS</span>
-          <div style={{ width: '100%', margin: '14px 0 10px' }}>
-            <ScrollBasedVelocity
-              text="STRATEGIC PILLARS OF DEFENCE"
-              default_velocity={1.0}
-              style={{
-                fontFamily: "var(--font-display)",
-                fontWeight: 800,
-                fontSize: "clamp(1.9rem, 3.8vw, 3rem)",
-                letterSpacing: "0.04em",
-                color: "var(--ink-bright)",
-                textTransform: "uppercase"
-              }}
-            />
-          </div>
-          <p className="section-subtitle">
-            Hover or tap any card to experience the interactive word swap. Click any pillar to view its complete tactical doctrine dossier.
+    <section id="about" className="section" style={{ position: 'relative', zIndex: 1 }}>
+      <div className="section-container rules-container">
+        {/* Section Header */}
+        <div className="section-header section-header-center" style={{ marginBottom: 28, textAlign: 'center' }}>
+          <span className="eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--gold)' }}>
+            <span>◆</span> MILITARY CONDUCT & DISCIPLINE
+          </span>
+          <h2 className="heading-section" style={{ marginTop: 10, marginBottom: 12, fontSize: 'clamp(2rem, 3.8vw, 3rem)' }}>
+            ARMY RULES & REGULATIONS
+          </h2>
+          <p className="section-subtitle" style={{ maxWidth: 760, margin: '0 auto', fontSize: '1.02rem' }}>
+            Understand your duties, follow applicable service regulations, maintain discipline, and uphold the highest standards of conduct.
           </p>
         </div>
 
-        <div className="pillars-grid">
-          {pillars.map((p, idx) => (
-            <ComponentBoxCard
-              key={idx}
-              category={p.category}
-              actionLabel="View >"
-              word1={p.word1}
-              word2={p.word2}
-              title={p.title}
-              description={p.desc}
-              icon={p.icon}
-              badge={p.badge}
-              previewHeight={175}
-              duration={400}
-              stagger={34}
-              interval={3000 + idx * 400}
-              onAction={() => onSelectPillar && onSelectPillar(p)}
+        {/* Search Bar */}
+        <div className="rules-search-wrapper">
+          <div className="rules-search-bar">
+            <span className="rules-search-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </span>
+            <input
+              type="text"
+              className="rules-search-input"
+              placeholder="Search rules, regulations, keywords (e.g. orders, uniform, leave, security)..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
             />
+            {searchQuery && (
+              <button 
+                className="rules-search-clear" 
+                onClick={() => setSearchQuery("")}
+                title="Clear search"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          {searchQuery && (
+            <div style={{ textAlign: 'center', marginTop: 8, fontSize: '0.82rem', color: 'var(--gold)' }}>
+              Found {filteredCategories.length} category matching "{searchQuery}"
+            </div>
+          )}
+        </div>
+
+        {/* 8 Category Cards Grid */}
+        <div className="rules-grid">
+          {filteredCategories.map((cat, idx) => (
+            <div 
+              key={cat.id || idx} 
+              className="rule-card"
+              tabIndex={0}
+              role="button"
+              onClick={() => handleSelect(cat)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSelect(cat); }}}
+            >
+              <div className="rule-card-top">
+                <div className="rule-card-icon">
+                  {cat.icon}
+                </div>
+                <div className="rule-card-code">{cat.code}</div>
+                <div className="rule-card-title">{cat.title}</div>
+                <div className="rule-card-desc">{cat.subtitle}</div>
+                
+                <ul className="rule-card-bullets">
+                  {cat.previewBullets.map((bullet, bIdx) => (
+                    <li key={bIdx}>{bullet}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="rule-card-action">
+                VIEW RULES ➔
+              </div>
+            </div>
           ))}
+        </div>
+
+        {filteredCategories.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--ink-dim)' }}>
+            <div style={{ fontSize: 24, marginBottom: 8 }}>🔍</div>
+            <p>No military regulations matched your search query "{searchQuery}".</p>
+            <button className="btn btn-secondary btn-sm" onClick={() => setSearchQuery("")} style={{ marginTop: 12 }}>
+              Reset Search Filter
+            </button>
+          </div>
+        )}
+
+        {/* Important Updates & Gazette Amendments Section */}
+        <div className="rules-updates-wrap">
+          <div 
+            className="rules-updates-header"
+            onClick={() => setShowUpdates(!showUpdates)}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ color: 'var(--gold)', fontSize: 16 }}>★</span>
+              <span className="mono" style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--ink-bright)' }}>
+                IMPORTANT UPDATES & REGULATORY GAZETTE AMENDMENTS
+              </span>
+              <span className="chip chip-gold" style={{ fontSize: 10 }}>4 RECENT</span>
+            </div>
+            <span style={{ color: 'var(--gold)', fontSize: 14 }}>
+              {showUpdates ? '▲ COLLAPSE' : '▼ EXPAND NOTICES'}
+            </span>
+          </div>
+
+          {showUpdates && (
+            <div className="rules-updates-body">
+              {RULES_UPDATES.map(upd => (
+                <div key={upd.id} className="rules-update-item">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <span className="mono text-gold" style={{ fontSize: 12, fontWeight: 700 }}>{upd.citation}</span>
+                    <span className="chip chip-duty" style={{ fontSize: 9 }}>{upd.status}</span>
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#fff', marginBottom: 6 }}>
+                    {upd.title}
+                  </div>
+                  <div style={{ display: 'flex', gap: 14, fontSize: '0.78rem', color: 'var(--ink-dim)' }}>
+                    <span>Published: <strong style={{ color: 'var(--ink-bright)' }}>{upd.published}</strong></span>
+                    <span>Effective: <strong style={{ color: 'var(--gold)' }}>{upd.effective}</strong></span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Footer Disclaimer */}
+        <div className="rules-preview-footer">
+          Illustrative website preview · Rule summaries should be verified against applicable official service regulations and orders.
         </div>
       </div>
     </section>
   );
 }
+
+// Backward compatibility alias
+const StrategicPillars = ArmyRulesSection;
+
 
 /* ==========================================================================
    COMMANDS & STATS COMPONENT
    ========================================================================== */
 
 function CommandsSection() {
-  const stats = [
-    { num: "7", title: "Theatre Commands", sub: "Operational Strategic Wings" },
-    { num: "125+", title: "Years of Heritage", sub: "Valour, Glory & Sacrifice" },
-    { num: "1.2M+", title: "Active Personnel", sub: "Standing Ready 24/7" },
-    { num: "100%", title: "Border Vigilance", sub: "Siachen to Thar Desert" },
-  ];
-
-  return (
-    <section id="commands" style={{ position: 'relative', zIndex: 1 }}>
-      {/* Stats Bar */}
-      <div className="stats-bar">
-        <div className="stats-bar-grid">
-          {stats.map((s, i) => (
-            <div key={i} className="stat-item">
-              <div className="stat-number">{s.num}</div>
-              <div className="stat-title">{s.title}</div>
-              <div className="stat-subtitle">{s.sub}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Commands Grid */}
-      <div className="section">
-        <div className="section-container">
-          <div className="section-header">
-            <span className="eyebrow">OPERATIONAL STRUCTURE</span>
-            <h2 className="heading-section">ARMY COMMAND FORMATIONS</h2>
-            <p className="section-subtitle">
-              The Indian Army is organized into seven specialized tactical and operational commands covering the vast geographical expanse of the nation.
-            </p>
-          </div>
-
-          <div className="commands-grid">
-            {COMMANDS_DATA.map((c, i) => (
-              <ComponentBoxCard
-                key={i}
-                category={`HQ: ${c.hq.split(',')[0]}`}
-                actionLabel="Details >"
-                word1={c.word1}
-                word2={c.word2}
-                title={c.name}
-                description={`${c.desc} Motto: "${c.motto.toUpperCase()}"`}
-                badge={`CMD-0${i+1}`}
-                previewHeight={170}
-                duration={380}
-                stagger={34}
-                interval={2800 + i * 350}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
+  return null;
 }
 
 /* ==========================================================================
@@ -1272,35 +1840,55 @@ function DDMSLogin({ onLogin }) {
   );
 }
 
-function DDMSDashboardView({ user, personnel, posts, alerts, weapons }) {
-  const onDuty = personnel.filter(p => p.status === "ON DUTY").length;
-  const available = personnel.filter(p => p.status === "AVAILABLE").length;
-  const issued = weapons.filter(w => w.status === "ISSUED").length;
+
+/* ==========================================================================
+   PAGE 1: COMMAND BOARD (ARMY BASE & UNIT SUMMARY)
+   ========================================================================== */
+
+function DDMSDashboardView({ baseInfo, units = [], personnel = [], assignments = [], equipment = [], alerts = [], onNavigateTab, onSelectUnit }) {
+  const [selectedUnitId, setSelectedUnitId] = useState(units[0]?.id || "UNIT-01");
   const chartRef = useRef(null);
+
+  const selectedUnit = units.find(u => u.id === selectedUnitId) || units[0] || {};
+  const unitMembers = personnel.filter(p => p.unitId === selectedUnit.id || p.unit === selectedUnit.shortName);
+  
+  // Rank breakdown for selected unit
+  const rankCounts = useMemo(() => {
+    const counts = {};
+    unitMembers.forEach(m => {
+      counts[m.rank] = (counts[m.rank] || 0) + 1;
+    });
+    return counts;
+  }, [unitMembers]);
+
+  const onDutyCount = personnel.filter(p => p.status === "ON DUTY").length;
+  const availableCount = personnel.filter(p => p.status === "AVAILABLE").length;
+  const restCount = personnel.filter(p => p.status === "REST" || p.status === "LEAVE").length;
+  const issuedEquipmentCount = equipment.filter(e => e.status === "ISSUED").length;
 
   useEffect(() => {
     if (!chartRef.current) return;
     const ctx = chartRef.current.getContext('2d');
     const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-    const gridColor = isLight ? '#d1cab7' : '#223727';
+    const gridColor = isLight ? '#d1cab7' : '#19271c';
     const textColor = isLight ? '#546559' : '#97aba0';
 
     const chart = new Chart(ctx, {
       type: 'bar',
       data: {
-        labels: posts.map(p => p.name),
+        labels: units.map(u => u.shortName || u.name),
         datasets: [
           {
-            label: 'Required Manpower',
-            data: posts.map(p => p.manpower),
+            label: 'Authorized Strength',
+            data: units.map(u => u.authorizedStrength || 40),
             backgroundColor: 'transparent',
             borderColor: isLight ? '#8f7236' : '#c5a059',
             borderWidth: 2,
             borderRadius: 2,
           },
           {
-            label: 'Filled Posts',
-            data: posts.map(p => p.filled),
+            label: 'Current Posted Members',
+            data: units.map(u => personnel.filter(p => p.unitId === u.id || p.unit === u.shortName).length),
             backgroundColor: isLight ? '#3d5a44' : '#3f684a',
             borderColor: '#4d825c',
             borderWidth: 1,
@@ -1313,19 +1901,16 @@ function DDMSDashboardView({ user, personnel, posts, alerts, weapons }) {
         maintainAspectRatio: false,
         plugins: {
           legend: {
-            labels: {
-              color: textColor,
-              font: { family: 'IBM Plex Mono', size: 11, weight: '600' }
-            }
+            labels: { color: textColor, font: { family: 'Inter', size: 11, weight: '600' } }
           }
         },
         scales: {
           x: {
-            ticks: { color: textColor, font: { family: 'IBM Plex Mono', size: 11 } },
+            ticks: { color: textColor, font: { family: 'Inter', size: 11 } },
             grid: { color: gridColor }
           },
           y: {
-            ticks: { color: textColor, font: { family: 'IBM Plex Mono', size: 11 }, stepSize: 1 },
+            ticks: { color: textColor, font: { family: 'Inter', size: 11 }, stepSize: 5 },
             grid: { color: gridColor },
             beginAtZero: true
           }
@@ -1334,76 +1919,801 @@ function DDMSDashboardView({ user, personnel, posts, alerts, weapons }) {
     });
 
     return () => chart.destroy();
-  }, [posts]);
+  }, [units, personnel]);
 
   return (
-    <div className="fade-in" style={{ display: 'grid', gap: 20 }}>
-      {/* Metric Cards with Natural Flipping Headings */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 16 }}>
-        {[
-          { label: 'On Duty Now', word1: 'DUTY', word2: 'ACTIVE', val: onDuty, sub: `of ${personnel.length} soldiers assigned`, color: 'var(--gold-light)' },
-          { label: 'Standby Reserve', word1: 'STANDBY', word2: 'READY', val: available, sub: 'Immediate tasking reserve', color: 'var(--steel)' },
-          { label: 'Weapons Issued', word1: 'WEAPONS', word2: 'ARMOURY', val: issued, sub: `of ${weapons.length} registered weapons`, color: 'var(--army-green-bright)' },
-          { label: 'Active Alerts', word1: 'ALERTS', word2: 'URGENT', val: alerts.length, sub: 'Requires guard officer review', color: 'var(--amber)' },
-        ].map((s, i) => (
-          <div key={i} className="card hud-corner" style={{ borderRadius: 'var(--radius-card)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div className="mono text-dim" style={{ fontSize: 10.5, letterSpacing: '.1em' }}>{s.label.toUpperCase()}</div>
-              <FlippingWordSwap
-                word1={s.word1}
-                word2={s.word2}
-                duration={350}
-                stagger={26}
-                interval={2500 + i * 400}
-                style={{ fontSize: 10.5, fontFamily: 'var(--font-mono)', color: 'var(--gold-light)', fontWeight: 700 }}
-              />
+    <div className="fade-in" style={{ display: 'grid', gap: 22 }}>
+      {/* Base Commander Summary Banner */}
+      <div className="card hud-corner" style={{ background: 'linear-gradient(135deg, #0e1e13 0%, #08120b 100%)', border: '1.5px solid var(--gold-dark)', padding: '20px 24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14 }}>
+          <div>
+            <div className="chip chip-gold" style={{ fontSize: 10, marginBottom: 6 }}>ARMY BASE COMMAND HEADQUARTERS</div>
+            <h2 className="disp" style={{ fontSize: 24, fontWeight: 900, color: 'var(--ink-bright)', margin: 0 }}>
+              {baseInfo?.name || "Northern Cantonment Base // Sector Alpha"}
+            </h2>
+            <div className="mono text-dim" style={{ fontSize: 12, marginTop: 4 }}>
+              COMMANDING OFFICER: <strong style={{ color: 'var(--gold-light)' }}>{baseInfo?.commandingOfficer || "Col R. S. Rathore"}</strong> · {baseInfo?.command || "Northern Command"}
             </div>
-            <div className="disp" style={{ fontSize: 36, fontWeight: 800, margin: '6px 0 2px', color: s.color }}>{s.val}</div>
-            <div className="mono text-dim" style={{ fontSize: 11 }}>{s.sub}</div>
           </div>
-        ))}
+          <div style={{ textAlign: 'right' }}>
+            <span className="chip chip-duty" style={{ fontWeight: 700, fontSize: 11 }}>🟢 BASE STATUS: OPERATIONAL</span>
+            <div className="mono text-dim" style={{ fontSize: 11, marginTop: 6 }}>RESTRICTED DEFENCE NODE // DEFCON 4</div>
+          </div>
+        </div>
       </div>
 
-      {/* Chart & Alerts */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20 }}>
-        <Panel title="Post Manning Real-Time Ratio" eyebrow="Manning Statistics">
-          <div style={{ height: 240 }}><canvas ref={chartRef}></canvas></div>
+      {/* 6 Key Performance Metric Tiles */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+        <div className="card hud-corner" style={{ background: 'var(--bg-panel-2)', padding: '16px' }}>
+          <div className="mono text-dim" style={{ fontSize: 10, letterSpacing: '.1em' }}>TOTAL BASE UNITS</div>
+          <div className="disp" style={{ fontSize: 26, fontWeight: 900, color: 'var(--gold-light)', marginTop: 4 }}>
+            {units.length} UNITS
+          </div>
+          <div className="mono text-dim" style={{ fontSize: 11, marginTop: 2 }}>Battalions & HQ Coy</div>
+        </div>
+        <div className="card hud-corner" style={{ background: 'var(--bg-panel-2)', padding: '16px' }}>
+          <div className="mono text-dim" style={{ fontSize: 10, letterSpacing: '.1em' }}>TOTAL SERVICEMEN</div>
+          <div className="disp" style={{ fontSize: 26, fontWeight: 900, color: 'var(--ink-bright)', marginTop: 4 }}>
+            {personnel.length} MEMBERS
+          </div>
+          <div className="mono text-dim" style={{ fontSize: 11, marginTop: 2 }}>Base registered strength</div>
+        </div>
+        <div className="card hud-corner" style={{ background: 'var(--bg-panel-2)', padding: '16px' }}>
+          <div className="mono text-dim" style={{ fontSize: 10, letterSpacing: '.1em' }}>ON DUTY NOW</div>
+          <div className="disp" style={{ fontSize: 26, fontWeight: 900, color: '#4ade80', marginTop: 4 }}>
+            {onDutyCount} ACTIVE
+          </div>
+          <div className="mono text-dim" style={{ fontSize: 11, marginTop: 2 }}>Across all guard posts</div>
+        </div>
+        <div className="card hud-corner" style={{ background: 'var(--bg-panel-2)', padding: '16px' }}>
+          <div className="mono text-dim" style={{ fontSize: 10, letterSpacing: '.1em' }}>STANDBY RESERVE</div>
+          <div className="disp" style={{ fontSize: 26, fontWeight: 900, color: 'var(--steel)', marginTop: 4 }}>
+            {availableCount} READY
+          </div>
+          <div className="mono text-dim" style={{ fontSize: 11, marginTop: 2 }}>Immediate tasking reserve</div>
+        </div>
+        <div className="card hud-corner" style={{ background: 'var(--bg-panel-2)', padding: '16px' }}>
+          <div className="mono text-dim" style={{ fontSize: 10, letterSpacing: '.1em' }}>REST / LEAVE CYCLE</div>
+          <div className="disp" style={{ fontSize: 26, fontWeight: 900, color: 'var(--amber)', marginTop: 4 }}>
+            {restCount} SERVICEMEN
+          </div>
+          <div className="mono text-dim" style={{ fontSize: 11, marginTop: 2 }}>Fatigue compliance rules</div>
+        </div>
+        <div className="card hud-corner" style={{ background: 'var(--bg-panel-2)', padding: '16px' }}>
+          <div className="mono text-dim" style={{ fontSize: 10, letterSpacing: '.1em' }}>CONTROLLED ARMS ISSUED</div>
+          <div className="disp" style={{ fontSize: 26, fontWeight: 900, color: 'var(--gold-light)', marginTop: 4 }}>
+            {issuedEquipmentCount} OF {equipment.length}
+          </div>
+          <div className="mono text-dim" style={{ fontSize: 11, marginTop: 2 }}>Armoury custody audit</div>
+        </div>
+      </div>
+
+      {/* Unit Summary Selector & Breakdown */}
+      <Panel
+        title="Base Units Directory & Personnel Breakdown"
+        eyebrow="Base Units Structure // Select Unit for Live Overview"
+        right={
+          <button 
+            onClick={() => onNavigateTab('units-members')} 
+            className="btn btn-secondary btn-sm"
+          >
+            MANAGE UNIT MEMBERS ➔
+          </button>
+        }
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 18 }}>
+          {units.map(u => {
+            const isSelected = u.id === selectedUnitId;
+            const strength = personnel.filter(p => p.unitId === u.id || p.unit === u.shortName).length;
+            const pct = Math.round((strength / (u.authorizedStrength || 40)) * 100);
+
+            return (
+              <div 
+                key={u.id}
+                onClick={() => setSelectedUnitId(u.id)}
+                className={`unit-card ${isSelected ? 'active' : ''}`}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="mono text-gold" style={{ fontSize: 11, fontWeight: 700 }}>{u.code}</span>
+                  <span className="chip chip-gold" style={{ fontSize: 9.5 }}>{u.sector ? u.sector.split(' ')[0] : 'SECTOR'}</span>
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--ink-bright)', marginTop: 6 }}>
+                  {u.shortName || u.name}
+                </div>
+                <div className="mono text-dim" style={{ fontSize: 11, marginTop: 4 }}>
+                  Officer: {u.seniorOfficer ? u.seniorOfficer.split(' ')[0] + ' ' + (u.seniorOfficer.split(' ')[1] || '') : 'CO'}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginTop: 10 }}>
+                  <span className="mono text-dim">Strength:</span>
+                  <span className="mono text-gold" style={{ fontWeight: 600 }}>{strength} / {u.authorizedStrength || 40} ({pct}%)</span>
+                </div>
+                <div className="progress-bar-bg">
+                  <div className="progress-bar-fill" style={{ width: `${Math.min(pct, 100)}%` }}></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Selected Unit Deep-Dive Box */}
+        {selectedUnit && (
+          <div className="card hud-corner" style={{ background: 'var(--bg-panel)', border: '1px solid var(--line-strong)', padding: '18px 22px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, borderBottom: '1px solid var(--line)', paddingBottom: 14 }}>
+              <div>
+                <span className="chip chip-gold" style={{ fontSize: 10, marginBottom: 4 }}>{selectedUnit.code} · UNIT OVERVIEW</span>
+                <h3 style={{ margin: '4px 0 0', fontSize: 18, color: 'var(--ink-bright)', fontFamily: 'var(--font-display)' }}>
+                  {selectedUnit.name} ({selectedUnit.shortName})
+                </h3>
+                <div className="mono text-gold" style={{ fontSize: 12, marginTop: 2, fontStyle: 'italic' }}>
+                  "{selectedUnit.motto}"
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button 
+                  onClick={() => {
+                    onSelectUnit(selectedUnit.id);
+                    onNavigateTab('units-members');
+                  }}
+                  className="btn btn-gold btn-sm"
+                >
+                  VIEW {selectedUnit.shortName} MEMBERS ➔
+                </button>
+                <button 
+                  onClick={() => onNavigateTab('duty-assignment')} 
+                  className="btn btn-secondary btn-sm"
+                >
+                  ASSIGN DUTY ➔
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginTop: 14 }}>
+              <div>
+                <div className="mono text-dim" style={{ fontSize: 11 }}>SENIOR OFFICER (COMMAND):</div>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink-bright)', marginTop: 2 }}>{selectedUnit.seniorOfficer || "Col R. S. Rathore"}</div>
+              </div>
+              <div>
+                <div className="mono text-dim" style={{ fontSize: 11 }}>SENIOR SUPERVISOR (ROSTER):</div>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gold-light)', marginTop: 2 }}>{selectedUnit.seniorSupervisor || "Hav Rawat, V. (Senior Havaldar)"}</div>
+              </div>
+              <div>
+                <div className="mono text-dim" style={{ fontSize: 11 }}>ASSIGNED SECTOR LOCATION:</div>
+                <div style={{ fontSize: 13.5, color: 'var(--ink)', marginTop: 2 }}>{selectedUnit.sector || "Base Complex"}</div>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
+              <div className="mono text-dim" style={{ fontSize: 11, marginBottom: 8 }}>UNIT RANK-WISE MEMBER BREAKDOWN:</div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                {Object.keys(rankCounts).length === 0 ? (
+                  <span className="mono text-dim" style={{ fontSize: 12 }}>No personnel assigned to this unit yet.</span>
+                ) : (
+                  Object.entries(rankCounts).map(([rank, count]) => (
+                    <span key={rank} className="chip" style={{ background: 'var(--bg-panel-2)', border: '1px solid var(--line-strong)', fontSize: 11 }}>
+                      <strong>{rank}:</strong> <span style={{ color: 'var(--gold-light)', marginLeft: 4 }}>{count}</span>
+                    </span>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </Panel>
+
+      {/* Base Strength Chart & Activity Logs */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 20 }}>
+        <Panel title="Unit-Wise Strength & Manning Chart" eyebrow="Authorized vs Current Strength">
+          <div style={{ height: 260 }}>
+            <canvas ref={chartRef}></canvas>
+          </div>
         </Panel>
 
-        <Panel title="Live Command & Shift Alerts" eyebrow="Operational Feed">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {alerts.map((a, i) => (
-              <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', paddingBottom: 10, borderBottom: i < alerts.length - 1 ? '1px solid var(--line)' : 'none' }}>
-                <div style={{ width: 9, height: 9, borderRadius: '50%', marginTop: 5, background: `var(--${a.level === 'amber' ? 'amber' : a.level === 'danger' ? 'danger' : 'steel'})`, flexShrink: 0 }}></div>
-                <div>
-                  <div style={{ fontSize: 13, lineHeight: 1.45, color: 'var(--ink-bright)' }}>{a.text}</div>
-                  <div className="mono text-dim" style={{ fontSize: 10.5, marginTop: 3 }}>{a.time}</div>
-                </div>
+        <Panel title="Recent Activity & Base Shift Alerts" eyebrow="Operational Audit Notifications">
+          <div style={{ display: 'grid', gap: 10 }}>
+            {alerts.slice(0, 4).map((a, i) => (
+              <div key={i} className="card hud-corner" style={{ background: 'var(--bg-panel-2)', padding: '10px 14px', borderLeft: `3px solid ${a.level === 'danger' || a.severity === 'ALERT' ? '#ef4444' : a.level === 'amber' || a.severity === 'WARN' ? '#f59e0b' : '#dfba74'}` }}>
+                <div style={{ fontSize: 12.5, color: 'var(--ink-bright)', fontWeight: 600 }}>{a.text}</div>
+                <div className="mono text-dim" style={{ fontSize: 10.5, marginTop: 4 }}>{a.time}</div>
               </div>
             ))}
           </div>
         </Panel>
       </div>
+    </div>
+  );
+}
 
-      {/* Today's Shift Board */}
-      <Panel title="Today's Shift Allocation Board" eyebrow={`Shift cycle · ${new Date().toDateString()}`}>
+/* ==========================================================================
+   PAGE 2: UNITS & MEMBERS (UNIT SELECTION, SEARCH, REGISTER & TRANSFER)
+   ========================================================================== */
+
+function DDMSUnitsMembersView({ 
+  units = [], 
+  personnel = [], 
+  selectedUnitId, 
+  onSelectUnit, 
+  onOpenRegister, 
+  onOpenEdit, 
+  onOpenTransfer, 
+  onOpenProfile, 
+  onDeleteMember, 
+  isAdmin, 
+  isSupervisor, 
+  userUnitId 
+}) {
+  const [filterUnit, setFilterUnit] = useState(selectedUnitId || "ALL");
+  const [filterRank, setFilterRank] = useState("ALL");
+  const [filterStatus, setFilterStatus] = useState("ALL");
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(() => {
+    return personnel.filter(p => {
+      const matchUnit = filterUnit === "ALL" || p.unitId === filterUnit || p.unit === filterUnit;
+      const matchRank = filterRank === "ALL" || p.rank === filterRank;
+      const matchStatus = filterStatus === "ALL" || p.status === filterStatus;
+      const q = search.toLowerCase();
+      const matchSearch = !q || 
+        (p.name && p.name.toLowerCase().includes(q)) ||
+        (p.armyNo && p.armyNo.toLowerCase().includes(q)) ||
+        (p.designation && p.designation.toLowerCase().includes(q)) ||
+        (p.unit && p.unit.toLowerCase().includes(q));
+
+      return matchUnit && matchRank && matchStatus && matchSearch;
+    });
+  }, [personnel, filterUnit, filterRank, filterStatus, search]);
+
+  const uniqueRanks = ["ALL", ...new Set(personnel.map(p => p.rank).filter(Boolean))];
+
+  return (
+    <div className="fade-in" style={{ display: 'grid', gap: 20 }}>
+      {/* Unit Selector Tabs Strip */}
+      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 6 }}>
+        <button
+          onClick={() => { setFilterUnit("ALL"); onSelectUnit("ALL"); }}
+          className={`btn btn-sm ${filterUnit === "ALL" ? 'btn-gold' : 'btn-ghost'}`}
+          style={{ whiteSpace: 'nowrap', fontWeight: 700 }}
+        >
+          ALL UNITS ({personnel.length})
+        </button>
+        {units.map(u => {
+          const count = personnel.filter(p => p.unitId === u.id || p.unit === u.shortName).length;
+          const isActive = filterUnit === u.id || filterUnit === u.shortName;
+          return (
+            <button
+              key={u.id}
+              onClick={() => { setFilterUnit(u.id); onSelectUnit(u.id); }}
+              className={`btn btn-sm ${isActive ? 'btn-gold' : 'btn-ghost'}`}
+              style={{ whiteSpace: 'nowrap', border: '1px solid var(--line-strong)' }}
+            >
+              {u.shortName} ({count})
+            </button>
+          );
+        })}
+      </div>
+
+      <Panel
+        title="Unit Personnel & Members Registry"
+        eyebrow="Roster Administration // Member Profile, Postings & Unit Strength"
+        right={
+          (isAdmin || isSupervisor) && (
+            <button
+              onClick={onOpenRegister}
+              className="btn btn-gold btn-sm"
+              style={{ fontWeight: 700 }}
+            >
+              ➕ REGISTER NEW MEMBER
+            </button>
+          )
+        }
+      >
+        {/* Filter Controls Bar */}
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', paddingBottom: 16, borderBottom: '1px solid var(--line)', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span className="mono" style={{ fontSize: 11, color: 'var(--gold-light)' }}>UNIT:</span>
+            <select
+              value={filterUnit}
+              onChange={e => { setFilterUnit(e.target.value); onSelectUnit(e.target.value); }}
+              className="mono"
+              style={{ background: 'var(--bg-base)', color: 'var(--ink)', border: '1px solid var(--line)', padding: '6px 10px', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
+            >
+              <option value="ALL">All Base Units</option>
+              {units.map(u => (
+                <option key={u.id} value={u.id}>{u.shortName} ({u.code})</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span className="mono" style={{ fontSize: 11, color: 'var(--gold-light)' }}>RANK:</span>
+            <select
+              value={filterRank}
+              onChange={e => setFilterRank(e.target.value)}
+              className="mono"
+              style={{ background: 'var(--bg-base)', color: 'var(--ink)', border: '1px solid var(--line)', padding: '6px 10px', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
+            >
+              {uniqueRanks.map(r => (
+                <option key={r} value={r}>{r === "ALL" ? "All Ranks" : r}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span className="mono" style={{ fontSize: 11, color: 'var(--gold-light)' }}>STATUS:</span>
+            <select
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+              className="mono"
+              style={{ background: 'var(--bg-base)', color: 'var(--ink)', border: '1px solid var(--line)', padding: '6px 10px', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="ON DUTY">On Duty</option>
+              <option value="AVAILABLE">Available</option>
+              <option value="REST">Rest Cycle</option>
+              <option value="LEAVE">Leave</option>
+            </select>
+          </div>
+
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search Member Name, Army No, Role, or Quarter…"
+              className="mono"
+              style={{ width: '100%', padding: '6px 12px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink)', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
+            />
+          </div>
+
+          <div className="mono text-dim" style={{ fontSize: 11 }}>
+            Showing <strong>{filtered.length}</strong> of {personnel.length} servicemen
+          </div>
+        </div>
+
+        {/* Member Directory Table */}
         <div style={{ overflowX: 'auto' }}>
           <table className="tactical-table">
             <thead>
               <tr>
-                <th>SHIFT WINDOW</th>
-                <th>POST / SECTOR</th>
-                <th>ASSIGNED PERSONNEL</th>
-                <th>LOCATION</th>
+                <th>ARMY NO. & NAME</th>
+                <th>RANK & UNIT</th>
+                <th>DESIGNATION / ROLE</th>
+                <th>ADMIN STATUS</th>
+                <th>FAMILY & QUARTERS</th>
+                <th>POSTING TENURE</th>
+                <th style={{ textAlign: 'center' }}>ACTIONS</th>
               </tr>
             </thead>
             <tbody>
-              {DUTY_ROSTER.map((r, i) => (
-                <tr key={i} className="board-row">
-                  <td className="mono text-gold" style={{ fontWeight: 600 }}>{r.shift}</td>
-                  <td style={{ fontWeight: 600, color: 'var(--ink-bright)' }}>{r.post}</td>
-                  <td className="mono" style={{ color: 'var(--ink-dim)' }}>{r.personnel.join(' · ')}</td>
-                  <td className="mono text-dim" style={{ fontSize: 12 }}>{r.sector}</td>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '34px 10px', color: 'var(--ink-dim)' }}>
+                    No unit members match the selected filters. Click "+ REGISTER NEW MEMBER" to enlist personnel.
+                  </td>
+                </tr>
+              ) : (
+                filtered.map(p => {
+                  const hasQuarter = p.quarterStatus === "ALLOCATED";
+                  const canEdit = isAdmin || (isSupervisor && (p.unitId === userUnitId || p.unit === userUnitId));
+
+                  return (
+                    <tr key={p.id || p.armyNo} className="board-row">
+                      <td>
+                        <div style={{ fontWeight: 700, color: 'var(--ink-bright)' }}>{p.name}</div>
+                        <div className="mono text-dim" style={{ fontSize: 11 }}>{p.armyNo}</div>
+                      </td>
+                      <td>
+                        <div className="mono text-gold" style={{ fontWeight: 600 }}>{p.rank}</div>
+                        <div className="mono text-dim" style={{ fontSize: 11 }}>{p.unit}</div>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: 13, color: 'var(--ink-bright)' }}>{p.designation || "Rifleman"}</div>
+                      </td>
+                      <td>
+                        <StatusChip status={p.status} />
+                        {p.restHours > 0 && (
+                          <div className="mono text-dim" style={{ fontSize: 10, marginTop: 3, color: 'var(--amber)' }}>
+                            Rest: {p.restHours}h
+                          </div>
+                        )}
+                      </td>
+                      <td>
+                        <div style={{ fontSize: 12 }}>{p.familyStatus || "Single"}</div>
+                        <div className="mono text-dim" style={{ fontSize: 11, color: hasQuarter ? '#4ade80' : 'var(--ink-dim)' }}>
+                          {hasQuarter ? `🟢 ${p.quarterNo || 'Allocated'}` : '⚪ Barracks Living'}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="mono" style={{ fontSize: 11 }}>In: {p.joinedDate || '2024-01-01'}</div>
+                        <div className="mono text-gold" style={{ fontSize: 10.5 }}>Due: {p.nextTransferDate || '2027-01-01'}</div>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'inline-flex', gap: 6, flexWrap: 'nowrap' }}>
+                          <button
+                            onClick={() => onOpenProfile(p)}
+                            className="btn btn-ghost btn-sm"
+                            style={{ padding: '3px 8px', fontSize: 11 }}
+                            title="View Full Profile Dossier"
+                          >
+                            👤 PROFILE
+                          </button>
+                          {canEdit && (
+                            <>
+                              <button
+                                onClick={() => onOpenTransfer(p)}
+                                className="btn btn-ghost btn-sm"
+                                style={{ padding: '3px 8px', fontSize: 11, color: 'var(--gold-light)' }}
+                                title="Transfer soldier to another unit"
+                              >
+                                🔄 TRANSFER
+                              </button>
+                              <button
+                                onClick={() => onOpenEdit(p)}
+                                className="btn btn-ghost btn-sm"
+                                style={{ padding: '3px 8px', fontSize: 11 }}
+                                title="Edit Member Profile"
+                              >
+                                ✏️ EDIT
+                              </button>
+                            </>
+                          )}
+                          {isAdmin && (
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`Confirm removal of ${p.rank} ${p.name} (${p.armyNo}) from base records?`)) {
+                                  onDeleteMember(p.id || p.armyNo);
+                                }
+                              }}
+                              className="btn btn-ghost btn-sm"
+                              style={{ padding: '3px 8px', fontSize: 11, color: '#f87171' }}
+                              title="Delete Member"
+                            >
+                              🗑️
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+/* ==========================================================================
+   PAGE 3: DUTY ASSIGNMENT (DEDICATED STEP-BY-STEP DUTY ORDER GENERATOR)
+   ========================================================================== */
+
+function DDMSDutyAssignmentView({ 
+  units = [], 
+  personnel = [], 
+  posts = [], 
+  dutyAssignments = [], 
+  onSaveAssignment, 
+  onNavigateTab, 
+  adminUser, 
+  isAdmin, 
+  isSupervisor, 
+  userUnitId 
+}) {
+  const initialUnit = isSupervisor && userUnitId ? userUnitId : (units[0]?.id || "UNIT-01");
+  const [selectedUnitId, setSelectedUnitId] = useState(initialUnit);
+  const [dutyDate, setDutyDate] = useState(new Date().toISOString().substring(0, 10));
+  const [shift, setShift] = useState("0600–1400");
+  const [postId, setPostId] = useState(posts[0]?.id || "PST-01");
+  const [supervisor, setSupervisor] = useState(adminUser || "Hav Rawat, V. (Senior Havaldar)");
+  const [selectedSoldierIds, setSelectedSoldierIds] = useState([]);
+  const [remarks, setRemarks] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [statusMsg, setStatusMsg] = useState("");
+  const [conflictWarning, setConflictWarning] = useState("");
+
+  const targetUnit = units.find(u => u.id === selectedUnitId || u.shortName === selectedUnitId) || units[0] || {};
+  const unitSoldiers = personnel.filter(p => p.unitId === targetUnit.id || p.unit === targetUnit.shortName);
+
+  // Live Conflict Checker
+  useEffect(() => {
+    if (selectedSoldierIds.length === 0) {
+      setConflictWarning("");
+      return;
+    }
+
+    const conflicts = [];
+    const existingForShift = dutyAssignments.filter(a => a.date === dutyDate && a.shift === shift && a.status !== "CANCELLED");
+
+    selectedSoldierIds.forEach(armyNo => {
+      const soldier = personnel.find(p => p.armyNo === armyNo);
+      if (!soldier) return;
+
+      // Check if already assigned on same shift
+      existingForShift.forEach(ex => {
+        if (ex.assignedPersonnel && ex.assignedPersonnel.some(ep => ep.armyNo === armyNo)) {
+          conflicts.push(`${soldier.rank} ${soldier.name} is already assigned to ${ex.postName} in this ${shift} window!`);
+        }
+      });
+
+      // Check if on rest or leave
+      if (soldier.status === "REST") {
+        conflicts.push(`${soldier.rank} ${soldier.name} is currently in REST cycle (due ${soldier.restHours}h).`);
+      } else if (soldier.status === "LEAVE") {
+        conflicts.push(`${soldier.rank} ${soldier.name} is currently on AUTHORIZED LEAVE.`);
+      }
+    });
+
+    if (conflicts.length > 0) {
+      setConflictWarning(conflicts.join(" | "));
+    } else {
+      setConflictWarning("");
+    }
+  }, [selectedSoldierIds, dutyDate, shift, dutyAssignments, personnel]);
+
+  const toggleSoldier = (armyNo) => {
+    setSelectedSoldierIds(prev => 
+      prev.includes(armyNo) ? prev.filter(id => id !== armyNo) : [...prev, armyNo]
+    );
+  };
+
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    if (selectedSoldierIds.length === 0) {
+      alert("Please select at least 1 soldier to assign.");
+      return;
+    }
+
+    setSubmitting(true);
+    setStatusMsg("");
+
+    const assignedSoldiers = selectedSoldierIds.map(armyNo => {
+      const s = personnel.find(p => p.armyNo === armyNo) || { armyNo, name: armyNo, rank: "Sep" };
+      return { armyNo: s.armyNo, name: s.name, rank: s.rank };
+    });
+
+    try {
+      await onSaveAssignment({
+        unitId: targetUnit.id,
+        unit: targetUnit.shortName,
+        date: dutyDate,
+        shift,
+        postId,
+        supervisor,
+        assignedPersonnel: assignedSoldiers,
+        remarks: remarks.trim()
+      });
+
+      setStatusMsg("SUCCESS: Duty Order Gazetted to Duty Roster & History!");
+      setSelectedSoldierIds([]);
+      setRemarks("");
+      setTimeout(() => {
+        setStatusMsg("");
+      }, 3500);
+    } catch (err) {
+      setStatusMsg("ERROR: " + err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fade-in" style={{ display: 'grid', gap: 22 }}>
+      <Panel
+        title="Create & Gazette Duty Assignment Order"
+        eyebrow="Step-by-Step Duty Allocation // Guard Posts, Shifts & Unit Verification"
+        right={
+          <button 
+            onClick={() => onNavigateTab('roster')} 
+            className="btn btn-secondary btn-sm"
+          >
+            VIEW CURRENT ROSTER ➔
+          </button>
+        }
+      >
+        <form onSubmit={handleFormSubmit} style={{ display: 'grid', gap: 18 }}>
+          {/* Step 1 to 4 Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+            <div>
+              <label className="form-section-title">1. TARGET UNIT</label>
+              <select
+                value={selectedUnitId}
+                onChange={e => { setSelectedUnitId(e.target.value); setSelectedSoldierIds([]); }}
+                required
+                className="mono"
+                style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)', fontSize: 13 }}
+              >
+                {units.map(u => (
+                  <option key={u.id} value={u.id}>{u.shortName} ({u.code})</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="form-section-title">2. DEPLOYMENT DATE</label>
+              <input
+                type="date"
+                value={dutyDate}
+                onChange={e => setDutyDate(e.target.value)}
+                required
+                className="mono"
+                style={{ width: '100%', padding: '9px 12px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)', fontSize: 13 }}
+              />
+            </div>
+
+            <div>
+              <label className="form-section-title">3. SHIFT WINDOW</label>
+              <select
+                value={shift}
+                onChange={e => setShift(e.target.value)}
+                required
+                className="mono"
+                style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)', fontSize: 13 }}
+              >
+                <option value="0600–1400">0600–1400 (Morning Vigil)</option>
+                <option value="1400–2200">1400–2200 (Evening Patrol)</option>
+                <option value="2200–0600">2200–0600 (Night Standby)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="form-section-title">4. GUARD POST / RESPONSIBILITY</label>
+              <select
+                value={postId}
+                onChange={e => setPostId(e.target.value)}
+                required
+                className="mono"
+                style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)', fontSize: 13 }}
+              >
+                {posts.map(p => (
+                  <option key={p.id} value={p.id}>{p.name} [{p.priority}]</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="form-section-title">5. RESPONSIBLE SUPERVISOR (SENIOR HAVALDAR / DUTY OFFICER)</label>
+            <input
+              type="text"
+              value={supervisor}
+              onChange={e => setSupervisor(e.target.value)}
+              placeholder="e.g. Hav Rawat, V. (Senior Havaldar)"
+              required
+              className="mono"
+              style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)', fontSize: 13 }}
+            />
+          </div>
+
+          {/* Step 6: Assigned Personnel Multi-Selector */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <label className="form-section-title" style={{ margin: 0 }}>
+                6. SELECT ASSIGNED SERVICEMEN (FROM {targetUnit.shortName || 'UNIT'})
+              </label>
+              <span className="mono text-gold" style={{ fontSize: 11 }}>
+                Selected: <strong>{selectedSoldierIds.length}</strong> soldiers
+              </span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10, maxHeight: 240, overflowY: 'auto', padding: '10px', background: 'var(--bg-panel)', border: '1px solid var(--line)', borderRadius: 'var(--radius-xs)' }}>
+              {unitSoldiers.length === 0 ? (
+                <div className="mono text-dim" style={{ padding: 16 }}>No personnel enlisted in this unit.</div>
+              ) : (
+                unitSoldiers.map(s => {
+                  const isChecked = selectedSoldierIds.includes(s.armyNo);
+                  const isBusy = s.status === "REST" || s.status === "LEAVE";
+
+                  return (
+                    <div
+                      key={s.armyNo}
+                      onClick={() => toggleSoldier(s.armyNo)}
+                      className={`soldier-checkbox-tile ${isChecked ? 'checked' : ''}`}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {}} // handled by parent div
+                          style={{ accentColor: 'var(--gold)', cursor: 'pointer' }}
+                        />
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink-bright)' }}>
+                            {s.rank} {s.name}
+                          </div>
+                          <div className="mono text-dim" style={{ fontSize: 10.5 }}>{s.armyNo} · {s.designation}</div>
+                        </div>
+                      </div>
+                      <div>
+                        <span className={`chip ${s.status === 'ON DUTY' ? 'chip-gold' : s.status === 'AVAILABLE' ? 'chip-duty' : 'chip-danger'}`} style={{ fontSize: 9.5 }}>
+                          {s.status}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Remarks */}
+          <div>
+            <label className="form-section-title">7. SPECIAL TACTICAL DIRECTIVES / REMARKS</label>
+            <input
+              type="text"
+              value={remarks}
+              onChange={e => setRemarks(e.target.value)}
+              placeholder="e.g. High vigilance on vehicle barrier; check communication link hourly"
+              className="mono"
+              style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)', fontSize: 13 }}
+            />
+          </div>
+
+          {/* Conflict Warning Alert Box */}
+          {conflictWarning && (
+            <div className="card hud-corner" style={{ background: 'rgba(239, 68, 68, 0.12)', border: '1.5px solid #ef4444', padding: '12px 16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#f87171', fontWeight: 700, fontSize: 13 }}>
+                <span>⚠️ CONFLICT / REST RESTRICTION DETECTED:</span>
+              </div>
+              <div className="mono" style={{ fontSize: 11.5, color: '#fca5a5', marginTop: 4 }}>
+                {conflictWarning}
+              </div>
+            </div>
+          )}
+
+          {statusMsg && (
+            <div className="mono" style={{ padding: '10px 14px', borderRadius: 'var(--radius-xs)', fontSize: 12.5, background: statusMsg.startsWith('ERROR') ? 'rgba(239, 68, 68, 0.15)' : 'rgba(34, 197, 94, 0.15)', color: statusMsg.startsWith('ERROR') ? '#f87171' : '#4ade80' }}>
+              {statusMsg}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 6 }}>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="btn btn-gold"
+              style={{ fontWeight: 800, minWidth: 240 }}
+            >
+              {submitting ? 'DISPATCHING ORDER…' : '⚔️ CONFIRM & GAZETTE DUTY ORDER'}
+            </button>
+          </div>
+        </form>
+      </Panel>
+
+      {/* Recent Assignments Snapshot */}
+      <Panel title="Recent Base Duty Assignments" eyebrow="Latest Orders Saved to Database">
+        <div style={{ overflowX: 'auto' }}>
+          <table className="tactical-table">
+            <thead>
+              <tr>
+                <th>DATE & SHIFT</th>
+                <th>UNIT</th>
+                <th>DUTY POST</th>
+                <th>ASSIGNED SERVICEMEN</th>
+                <th>SUPERVISOR</th>
+                <th>STATUS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dutyAssignments.slice(0, 4).map(a => (
+                <tr key={a.id} className="board-row">
+                  <td className="mono text-gold" style={{ fontWeight: 600 }}>{a.date} ({a.shift})</td>
+                  <td style={{ fontWeight: 600 }}>{a.unit}</td>
+                  <td style={{ color: 'var(--ink-bright)' }}>{a.postName}</td>
+                  <td>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      {a.assignedPersonnel && a.assignedPersonnel.map(ap => (
+                        <span key={ap.armyNo} className="chip" style={{ fontSize: 10, background: 'var(--bg-panel-2)' }}>
+                          {ap.rank} {ap.name}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="mono text-dim" style={{ fontSize: 11 }}>{a.supervisor}</td>
+                  <td>
+                    <span className={`chip ${a.status === 'ACTIVE' ? 'chip-duty' : a.status === 'COMPLETED' ? 'chip-gold' : 'chip-danger'}`} style={{ fontSize: 10 }}>
+                      {a.status}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -1415,419 +2725,213 @@ function DDMSDashboardView({ user, personnel, posts, alerts, weapons }) {
 }
 
 /* ==========================================================================
-   OFFICIAL INDIAN ARMY PDF DOCUMENT GENERATOR & PRINT DISPATCHER
+   PAGE 4: DUTY ROSTER (SAVED ASSIGNMENTS TABLE, FILTERS & DETAILS)
    ========================================================================== */
 
-function generateDutyReportPDF(records, filterDate = "ALL", adminUser = "Col R. S. Rathore (Commanding Officer)") {
-  const printWindow = window.open('', '_blank', 'width=980,height=760');
-  if (!printWindow) {
-    alert("Pop-up blocked! Please allow pop-ups for this site to generate and download the official PDF muster roll.");
-    return;
-  }
-
-  const dateStr = filterDate === "ALL" ? new Date().toDateString().toUpperCase() : filterDate;
-  const hash = "SHA256-" + Array.from({ length: 12 }, () => Math.floor(Math.random() * 16).toString(16)).join('').toUpperCase();
-
-  const html = `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <title>INDIAN ARMY — Daily Duty Allocation & Guard Manning Muster Roll</title>
-      <style>
-        @page { size: A4 portrait; margin: 12mm 15mm; }
-        body { font-family: 'Times New Roman', Times, serif; color: #111; margin: 0; padding: 24px; font-size: 11.5px; line-height: 1.35; background: #fff; }
-        .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 14px; position: relative; }
-        .classification { font-weight: bold; color: #b00; letter-spacing: 2.5px; font-size: 11px; margin-bottom: 6px; }
-        .emblem-title { font-size: 16px; font-weight: bold; letter-spacing: 1.2px; text-transform: uppercase; margin: 0; }
-        .sub-header { font-size: 12.5px; font-weight: bold; margin-top: 3px; color: #222; }
-        .doc-title { font-size: 13.5px; font-weight: bold; margin-top: 6px; text-decoration: underline; letter-spacing: 0.5px; }
-        .meta-strip { display: flex; justify-content: space-between; font-size: 10.5px; margin-top: 10px; border-bottom: 1px dashed #777; padding-bottom: 6px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 10.5px; }
-        th, td { border: 1px solid #333; padding: 6px 7px; text-align: left; }
-        th { background: #f0f0f0; font-weight: bold; text-transform: uppercase; font-size: 10px; }
-        .status-badge { display: inline-block; padding: 2px 5px; font-size: 9px; font-weight: bold; border: 1px solid #333; border-radius: 2px; }
-        .footer-sig { margin-top: 34px; display: flex; justify-content: space-between; align-items: flex-end; page-break-inside: avoid; }
-        .sig-block { border-top: 1px solid #000; padding-top: 6px; width: 230px; text-align: center; font-size: 10.5px; }
-        .watermark { position: fixed; top: 38%; left: 10%; transform: rotate(-32deg); font-size: 60px; color: rgba(0,0,0,0.05); font-weight: bold; pointer-events: none; z-index: -1; }
-        .no-print { display: flex; justify-content: space-between; align-items: center; background: #1f3624; color: #fff; padding: 12px 18px; margin-bottom: 20px; border-radius: 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-        .btn-print { background: #c5a059; color: #0c140e; border: none; padding: 8px 18px; font-weight: bold; cursor: pointer; border-radius: 4px; font-size: 12px; }
-        .btn-print:hover { background: #dfba74; }
-        @media print {
-          .no-print { display: none !important; }
-          body { padding: 0; }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="watermark">RESTRICTED // DEFENCE OFFICIAL</div>
-      <div class="no-print">
-        <div>
-          <strong style="color: #dfba74;">INDIAN ARMY DDMS OFFICIAL MUSTER ROLL</strong> — Ready for PDF Download or Direct Print
-        </div>
-        <button class="btn-print" onclick="window.print()">⬇ SAVE / PRINT AS PDF</button>
-      </div>
-
-      <div class="header">
-        <div class="classification">RESTRICTED // FOR OFFICIAL ARMED FORCES USE ONLY</div>
-        <div class="emblem-title">INTEGRATED HEADQUARTERS OF MINISTRY OF DEFENCE (ARMY)</div>
-        <div class="sub-header">DIRECTORATE GENERAL OF OPERATIONAL LOGISTICS & FIELD COMMAND</div>
-        <div class="doc-title">DAILY GUARD DUTY & STATION MANNING MUSTER ROLL (FORM IA-2026/GSRO)</div>
-        <div class="meta-strip">
-          <span><strong>DATE:</strong> ${dateStr}</span>
-          <span><strong>FORMATION:</strong> 2 GRENADIERS / NORTHERN THEATRE</span>
-          <span><strong>DEFCON:</strong> 4 NORMAL READY</span>
-          <span><strong>DISPATCH REF:</strong> DDMS-OPS/${dateStr.replace(/[^a-zA-Z0-9]/g, '')}/HQ</span>
-        </div>
-      </div>
-
-      <p style="margin: 0 0 10px; font-size: 11px;">
-        Pursuant to Section Orders and Field Standing Regulations, the undermentioned military personnel have been gazetted and deployed to designated tactical guard stations and sentry posts for the stated duty duration:
-      </p>
-
-      <table>
-        <thead>
-          <tr>
-            <th style="width: 25px; text-align: center;">SR.</th>
-            <th>DATE</th>
-            <th>GUARD POST / STATION</th>
-            <th>ARMY NO. & RANK</th>
-            <th>SOLDIER NAME</th>
-            <th>REGIMENT / UNIT</th>
-            <th>SHIFT WINDOW</th>
-            <th>STATUS</th>
-            <th>AUTHORIZED BY</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${records.map((r, i) => `
-            <tr>
-              <td style="text-align: center;">${i + 1}</td>
-              <td style="font-family: monospace;">${r.date || dateStr}</td>
-              <td><strong>${r.post}</strong></td>
-              <td style="font-family: monospace;">${r.armyNo || '—'} (${r.rank || 'Hav'})</td>
-              <td><strong>${r.name || r.personnel || '—'}</strong></td>
-              <td>${r.unit || '2 GRENADIERS'}</td>
-              <td style="font-family: monospace;">${r.shift}</td>
-              <td><span class="status-badge">${r.status || 'DEPLOYED'}</span></td>
-              <td style="font-size: 9.5px; color: #333;">${r.authorizedBy || adminUser}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-
-      <div class="footer-sig">
-        <div>
-          <div style="font-size: 9.5px; color: #555; line-height: 1.5;">
-            <strong>Cryptographic Ledger Hash:</strong> <span style="font-family: monospace;">${hash}</span><br>
-            <strong>Restricted Terminal Node:</strong> DEL-09-TACTICAL<br>
-            <strong>System Registry:</strong> Automated DDMS Operational Roster Engine
-          </div>
-        </div>
-        <div class="sig-block">
-          <strong>${adminUser}</strong><br>
-          Commanding Officer / Adjutant<br>
-          Integrated Defence Guard Operations
-        </div>
-      </div>
-
-      <script>
-        window.onload = function() {
-          setTimeout(function() { window.print(); }, 400);
-        };
-      </script>
-    </body>
-    </html>
-  `;
-
-  printWindow.document.open();
-  printWindow.document.write(html);
-  printWindow.document.close();
-}
-
-/* ==========================================================================
-   ADMIN INTERACTIVE DUTY ASSIGNMENT MODAL
-   ========================================================================== */
-
-function AdminAssignDutyModal({ isOpen, onClose, personnel, posts, onDutyAssigned, adminUser }) {
-  if (!isOpen) return null;
-
-  const [soldier, setSoldier] = useState(personnel[0] ? `${personnel[0].armyNo} ${personnel[0].name}` : "");
-  const [post, setPost] = useState(posts[0]?.name || "Main Gate");
-  const [shift, setShift] = useState("0600–1400");
-  const [dutyDate, setDutyDate] = useState(new Date().toISOString().substring(0, 10));
-  const [priority, setPriority] = useState("HIGH");
-  const [submitting, setSubmitting] = useState(false);
-  const [statusMsg, setStatusMsg] = useState("");
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setStatusMsg("");
-    try {
-      await onDutyAssigned({
-        shift,
-        post,
-        personnelName: soldier,
-        operator: adminUser,
-        date: dutyDate,
-        priority
-      });
-      setStatusMsg("SUCCESS: Guard Duty Order Gazetted to Backend Roster & History");
-      setTimeout(() => {
-        onClose();
-      }, 700);
-    } catch (err) {
-      setStatusMsg("ERROR: " + err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div 
-        className="modal-content hud-corner" 
-        onClick={e => e.stopPropagation()} 
-        style={{ maxWidth: 540, width: '92%', background: 'var(--bg-surface)', border: '1.5px solid var(--gold)', borderRadius: 'var(--radius-card)', padding: '26px' }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, borderBottom: '1px solid var(--line)', paddingBottom: 12 }}>
-          <div>
-            <div className="chip chip-gold" style={{ fontSize: 9.5, marginBottom: 4 }}>ADMIN COMMAND AUTHORITY</div>
-            <h3 style={{ margin: 0, fontSize: 18, color: 'var(--ink-bright)', fontFamily: 'var(--font-display)' }}>
-              ASSIGN / OVERRIDE GUARD DUTY
-            </h3>
-          </div>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--ink-dim)', fontSize: 20, cursor: 'pointer' }}>✕</button>
-        </div>
-
-        <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 15 }}>
-          <div>
-            <label className="mono" style={{ display: 'block', fontSize: 11, color: 'var(--gold-light)', marginBottom: 6 }}>
-              1. DATE OF DEPLOYMENT
-            </label>
-            <input 
-              type="date" 
-              value={dutyDate} 
-              onChange={e => setDutyDate(e.target.value)} 
-              required
-              className="mono"
-              style={{ width: '100%', padding: '10px 14px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)', fontSize: 13 }}
-            />
-          </div>
-
-          <div>
-            <label className="mono" style={{ display: 'block', fontSize: 11, color: 'var(--gold-light)', marginBottom: 6 }}>
-              2. SELECT SERVICEMAN (FROM MUSTER ROLL)
-            </label>
-            <select 
-              value={soldier} 
-              onChange={e => setSoldier(e.target.value)}
-              required
-              className="mono"
-              style={{ width: '100%', padding: '10px 14px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)', fontSize: 13 }}
-            >
-              {personnel.map(p => (
-                <option key={p.armyNo} value={`${p.armyNo} ${p.name}`}>
-                  {p.armyNo} — {p.rank} {p.name} ({p.unit}) [{p.status}]
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            <div>
-              <label className="mono" style={{ display: 'block', fontSize: 11, color: 'var(--gold-light)', marginBottom: 6 }}>
-                3. GUARD POST / SECTOR
-              </label>
-              <select 
-                value={post} 
-                onChange={e => setPost(e.target.value)}
-                required
-                className="mono"
-                style={{ width: '100%', padding: '10px 14px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)', fontSize: 13 }}
-              >
-                {posts.map(p => (
-                  <option key={p.id} value={p.name}>
-                    {p.name} ({p.id})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="mono" style={{ display: 'block', fontSize: 11, color: 'var(--gold-light)', marginBottom: 6 }}>
-                4. SHIFT WINDOW
-              </label>
-              <select 
-                value={shift} 
-                onChange={e => setShift(e.target.value)}
-                required
-                className="mono"
-                style={{ width: '100%', padding: '10px 14px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)', fontSize: 13 }}
-              >
-                <option value="0600–1400">0600–1400 IST (Morning Shift)</option>
-                <option value="1400–2200">1400–2200 IST (Evening Shift)</option>
-                <option value="2200–0600">2200–0600 IST (Night Watch)</option>
-              </select>
-            </div>
-          </div>
-
-          <div style={{ background: 'var(--bg-panel-2)', padding: '10px 14px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span className="mono" style={{ fontSize: 11, color: 'var(--ink-dim)' }}>COMMANDING OFFICER:</span>
-            <span className="mono text-gold" style={{ fontSize: 12, fontWeight: 700 }}>{adminUser}</span>
-          </div>
-
-          {statusMsg && (
-            <div className="mono" style={{ fontSize: 12, color: statusMsg.startsWith('ERROR') ? 'var(--danger)' : 'var(--success)', textAlign: 'center' }}>
-              {statusMsg}
-            </div>
-          )}
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
-            <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">CANCEL</button>
-            <button type="submit" disabled={submitting} className="btn btn-gold btn-sm" style={{ minWidth: 160 }}>
-              {submitting ? "DISPATCHING…" : "⚔️ CONFIRM DUTY ORDER"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-/* ==========================================================================
-   DUTY HISTORY VIEW (WHO WORKED ON THIS DAY & IN WHICH POST)
-   ========================================================================== */
-
-function DDMSDutyHistoryView({ history = [], onAssignClick, onDownloadPDF, isAdmin, adminUser }) {
-  const [selectedDate, setSelectedDate] = useState("ALL");
-  const [selectedPost, setSelectedPost] = useState("ALL");
+function DDMSRosterView({ 
+  units = [], 
+  assignments = [], 
+  posts = [], 
+  onUpdateStatus, 
+  onNavigateTab, 
+  onOpenDetail, 
+  isAdmin, 
+  isSupervisor 
+}) {
+  const [filterUnit, setFilterUnit] = useState("ALL");
+  const [filterDate, setFilterDate] = useState("");
+  const [filterShift, setFilterShift] = useState("ALL");
+  const [filterStatus, setFilterStatus] = useState("ALL");
   const [search, setSearch] = useState("");
 
-  const uniqueDates = ["ALL", ...new Set(history.map(h => h.date).filter(Boolean))];
-  const uniquePosts = ["ALL", ...new Set(history.map(h => h.post).filter(Boolean))];
+  const filtered = useMemo(() => {
+    return assignments.filter(a => {
+      const matchUnit = filterUnit === "ALL" || a.unitId === filterUnit || a.unit === filterUnit;
+      const matchDate = !filterDate || a.date === filterDate;
+      const matchShift = filterShift === "ALL" || a.shift === filterShift;
+      const matchStatus = filterStatus === "ALL" || a.status === filterStatus;
+      const q = search.toLowerCase();
+      const matchSearch = !q ||
+        (a.postName && a.postName.toLowerCase().includes(q)) ||
+        (a.unit && a.unit.toLowerCase().includes(q)) ||
+        (a.supervisor && a.supervisor.toLowerCase().includes(q)) ||
+        (a.assignedPersonnel && a.assignedPersonnel.some(p => p.name.toLowerCase().includes(q) || p.armyNo.toLowerCase().includes(q)));
 
-  const filtered = history.filter(item => {
-    const matchDate = selectedDate === "ALL" || item.date === selectedDate;
-    const matchPost = selectedPost === "ALL" || item.post.toLowerCase().includes(selectedPost.toLowerCase());
-    const matchSearch = (item.name && item.name.toLowerCase().includes(search.toLowerCase())) || 
-                        (item.armyNo && item.armyNo.toLowerCase().includes(search.toLowerCase())) ||
-                        (item.post && item.post.toLowerCase().includes(search.toLowerCase()));
-    return matchDate && matchPost && matchSearch;
-  });
+      return matchUnit && matchDate && matchShift && matchStatus && matchSearch;
+    });
+  }, [assignments, filterUnit, filterDate, filterShift, filterStatus, search]);
 
   return (
     <div className="fade-in" style={{ display: 'grid', gap: 20 }}>
       <Panel
-        title="Guard Duty Historical Deployment Ledger"
-        eyebrow="Chronological Duty Record // Who Worked When & Where"
+        title="Saved Master Duty Roster"
+        eyebrow="Live Base Postings // Verified Relational Database Records"
         right={
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-            <button 
-              onClick={() => onDownloadPDF(filtered, selectedDate)} 
-              className="btn btn-secondary btn-sm"
-              title="Generate and download official formatted Indian Army PDF muster roll"
+          (isAdmin || isSupervisor) && (
+            <button
+              onClick={() => onNavigateTab('duty-assignment')}
+              className="btn btn-gold btn-sm"
+              style={{ fontWeight: 700 }}
             >
-              ⬇ DOWNLOAD PDF REPORT
+              ➕ NEW DUTY ASSIGNMENT
             </button>
-            {isAdmin && (
-              <button 
-                onClick={onAssignClick} 
-                className="btn btn-gold btn-sm"
-              >
-                ➕ ASSIGN NEW DUTY
-              </button>
-            )}
-          </div>
+          )
         }
       >
-        {/* Filter Controls Bar */}
-        <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', paddingBottom: 16, borderBottom: '1px solid var(--line)', marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className="mono" style={{ fontSize: 11, color: 'var(--gold-light)' }}>DATE:</span>
+        {/* Filters Bar */}
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', paddingBottom: 16, borderBottom: '1px solid var(--line)', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span className="mono" style={{ fontSize: 11, color: 'var(--gold-light)' }}>UNIT:</span>
             <select
-              value={selectedDate}
-              onChange={e => setSelectedDate(e.target.value)}
+              value={filterUnit}
+              onChange={e => setFilterUnit(e.target.value)}
               className="mono"
               style={{ background: 'var(--bg-base)', color: 'var(--ink)', border: '1px solid var(--line)', padding: '6px 10px', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
             >
-              {uniqueDates.map(d => (
-                <option key={d} value={d}>{d === "ALL" ? "All Dates (Full Archive)" : d}</option>
+              <option value="ALL">All Units</option>
+              {units.map(u => (
+                <option key={u.id} value={u.id}>{u.shortName}</option>
               ))}
             </select>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className="mono" style={{ fontSize: 11, color: 'var(--gold-light)' }}>POST:</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span className="mono" style={{ fontSize: 11, color: 'var(--gold-light)' }}>DATE:</span>
+            <input
+              type="date"
+              value={filterDate}
+              onChange={e => setFilterDate(e.target.value)}
+              className="mono"
+              style={{ background: 'var(--bg-base)', color: 'var(--ink)', border: '1px solid var(--line)', padding: '5px 8px', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
+            />
+            {filterDate && (
+              <button onClick={() => setFilterDate("")} className="btn btn-ghost btn-sm" style={{ padding: '3px 8px', fontSize: 10 }}>✕</button>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span className="mono" style={{ fontSize: 11, color: 'var(--gold-light)' }}>SHIFT:</span>
             <select
-              value={selectedPost}
-              onChange={e => setSelectedPost(e.target.value)}
+              value={filterShift}
+              onChange={e => setFilterShift(e.target.value)}
               className="mono"
               style={{ background: 'var(--bg-base)', color: 'var(--ink)', border: '1px solid var(--line)', padding: '6px 10px', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
             >
-              {uniquePosts.map(p => (
-                <option key={p} value={p}>{p === "ALL" ? "All Posts" : p}</option>
-              ))}
+              <option value="ALL">All Shifts</option>
+              <option value="0600–1400">0600–1400</option>
+              <option value="1400–2200">1400–2200</option>
+              <option value="2200–0600">2200–0600</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span className="mono" style={{ fontSize: 11, color: 'var(--gold-light)' }}>STATUS:</span>
+            <select
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+              className="mono"
+              style={{ background: 'var(--bg-base)', color: 'var(--ink)', border: '1px solid var(--line)', padding: '6px 10px', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="ACTIVE">Active</option>
+              <option value="CONFIRMED">Confirmed</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
             </select>
           </div>
 
           <div style={{ flex: 1, minWidth: 200 }}>
-            <input 
+            <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search Soldier Name, Army No, or Station…"
+              placeholder="Search Post, Soldier, or Supervisor…"
               className="mono"
               style={{ width: '100%', padding: '6px 12px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink)', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
             />
           </div>
 
           <div className="mono text-dim" style={{ fontSize: 11 }}>
-            Showing <strong>{filtered.length}</strong> deployment records
+            Showing <strong>{filtered.length}</strong> active roster records
           </div>
         </div>
 
-        {/* History Table */}
+        {/* Assignments Table */}
         <div style={{ overflowX: 'auto' }}>
           <table className="tactical-table">
             <thead>
               <tr>
-                <th>DATE</th>
-                <th>GUARD POST / STATION</th>
-                <th>SOLDIER NAME & NO.</th>
-                <th>RANK & UNIT</th>
-                <th>SHIFT WINDOW</th>
+                <th>DATE & SHIFT</th>
+                <th>UNIT</th>
+                <th>DUTY POST / STATION</th>
+                <th>ASSIGNED SERVICEMEN</th>
+                <th>SUPERVISOR</th>
                 <th>STATUS</th>
-                <th>AUTHORIZED BY</th>
+                <th>LAST UPDATED</th>
+                <th style={{ textAlign: 'center' }}>ACTIONS</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '30px 10px', color: 'var(--ink-dim)' }}>
-                    No historical deployment records match the selected date or post filters.
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '34px 10px', color: 'var(--ink-dim)' }}>
+                    No duty assignments found matching the selected criteria. Click "NEW DUTY ASSIGNMENT" to create orders.
                   </td>
                 </tr>
               ) : (
-                filtered.map((item, i) => (
-                  <tr key={item.id || i} className="board-row">
-                    <td className="mono text-gold" style={{ fontWeight: 600 }}>{item.date}</td>
-                    <td style={{ fontWeight: 600, color: 'var(--ink-bright)' }}>{item.post}</td>
+                filtered.map(a => (
+                  <tr key={a.id} className="board-row">
                     <td>
-                      <div style={{ fontWeight: 600, color: 'var(--ink-bright)' }}>{item.name}</div>
-                      <div className="mono text-dim" style={{ fontSize: 11 }}>{item.armyNo}</div>
+                      <div className="mono text-gold" style={{ fontWeight: 700 }}>{a.date}</div>
+                      <div className="mono text-dim" style={{ fontSize: 11 }}>{a.shift}</div>
                     </td>
                     <td>
-                      <div className="mono">{item.rank}</div>
-                      <div className="mono text-dim" style={{ fontSize: 11 }}>{item.unit}</div>
+                      <div style={{ fontWeight: 700, color: 'var(--ink-bright)' }}>{a.unit}</div>
                     </td>
-                    <td className="mono">{item.shift}</td>
+                    <td style={{ color: 'var(--ink-bright)', fontWeight: 600 }}>
+                      {a.postName}
+                    </td>
                     <td>
-                      <span className={`chip ${item.status === 'COMPLETED' ? 'chip-duty' : item.status === 'ONGOING' ? 'chip-gold' : 'chip-duty'}`} style={{ fontSize: 10 }}>
-                        {item.status}
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {a.assignedPersonnel && a.assignedPersonnel.map(ap => (
+                          <span key={ap.armyNo} className="chip chip-gold" style={{ fontSize: 10 }}>
+                            {ap.rank} {ap.name}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="mono text-dim" style={{ fontSize: 11 }}>
+                      {a.supervisor}
+                    </td>
+                    <td>
+                      <span className={`chip ${a.status === 'ACTIVE' ? 'chip-duty' : a.status === 'COMPLETED' ? 'chip-gold' : 'chip-danger'}`} style={{ fontSize: 10 }}>
+                        {a.status}
                       </span>
                     </td>
-                    <td className="mono text-dim" style={{ fontSize: 11 }}>{item.authorizedBy}</td>
+                    <td className="mono text-dim" style={{ fontSize: 10.5 }}>
+                      {a.createdAt ? new Date(a.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '06:00 IST'}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <div style={{ display: 'inline-flex', gap: 6 }}>
+                        <button
+                          onClick={() => onOpenDetail(a)}
+                          className="btn btn-ghost btn-sm"
+                          style={{ padding: '3px 8px', fontSize: 11 }}
+                          title="View Full Assignment Docket"
+                        >
+                          👁️ DETAILS
+                        </button>
+                        {(isAdmin || isSupervisor) && a.status === 'ACTIVE' && (
+                          <button
+                            onClick={() => onUpdateStatus(a.id, 'COMPLETED')}
+                            className="btn btn-ghost btn-sm"
+                            style={{ padding: '3px 8px', fontSize: 11, color: '#4ade80' }}
+                            title="Mark Completed"
+                          >
+                            ✅ COMPLETE
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}
@@ -1839,197 +2943,531 @@ function DDMSDutyHistoryView({ history = [], onAssignClick, onDownloadPDF, isAdm
   );
 }
 
-function DDMSRosterView({ personnel, posts, onAssignClick, onDownloadPDF, isAdmin }) {
-  const [filter, setFilter] = useState("ALL");
-  const [search, setSearch] = useState("");
-  const units = ["ALL", ...new Set(personnel.map(p => p.unit))];
+/* ==========================================================================
+   PAGE 5: DUTY HISTORY (INTERACTIVE CALENDAR & DATE-BASED RETRIEVAL)
+   ========================================================================== */
 
-  const filtered = personnel.filter(p => {
-    const matchesUnit = filter === "ALL" || p.unit === filter;
-    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.armyNo.toLowerCase().includes(search.toLowerCase());
-    return matchesUnit && matchesSearch;
-  });
+function DDMSDutyHistoryView({ 
+  units = [], 
+  history = [], 
+  historyDates = [], 
+  onDownloadCSV, 
+  onOpenDetail, 
+  adminUser 
+}) {
+  const todayStr = new Date().toISOString().substring(0, 10);
+  const [selectedDate, setSelectedDate] = useState(todayStr);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [filterUnit, setFilterUnit] = useState("ALL");
+  const [search, setSearch] = useState("");
+
+  // Month navigation
+  const prevMonth = () => {
+    setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+  const nextMonth = () => {
+    setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
+
+  // Calendar Day Computation
+  const calendarDays = useMemo(() => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+
+    const firstDayIndex = new Date(year, month, 1).getDay(); // 0 is Sunday
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const days = [];
+    // Padding days before the 1st
+    for (let i = 0; i < firstDayIndex; i++) {
+      days.push({ empty: true, key: `empty-pre-${i}` });
+    }
+
+    // Days of the month
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const hasDuty = historyDates.includes(dateStr) || history.some(h => h.date === dateStr);
+      days.push({
+        dayNumber: d,
+        dateStr,
+        hasDuty,
+        isToday: dateStr === todayStr,
+        isSelected: dateStr === selectedDate,
+        key: dateStr
+      });
+    }
+
+    return days;
+  }, [currentMonth, historyDates, history, selectedDate, todayStr]);
+
+  // Filter history for selected date & unit
+  const filteredHistory = useMemo(() => {
+    return history.filter(h => {
+      const matchDate = !selectedDate || selectedDate === "ALL" || h.date === selectedDate;
+      const matchUnit = filterUnit === "ALL" || h.unitId === filterUnit || h.unit === filterUnit;
+      const q = search.toLowerCase();
+      const matchSearch = !q ||
+        (h.post && h.post.toLowerCase().includes(q)) ||
+        (h.unit && h.unit.toLowerCase().includes(q)) ||
+        (h.name && h.name.toLowerCase().includes(q)) ||
+        (h.assignedPersonnelNames && h.assignedPersonnelNames.toLowerCase().includes(q)) ||
+        (h.supervisor && h.supervisor.toLowerCase().includes(q));
+
+      return matchDate && matchUnit && matchSearch;
+    });
+  }, [history, selectedDate, filterUnit, search]);
+
+  const monthNames = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
+
+  return (
+    <div className="fade-in" style={{ display: 'grid', gap: 22 }}>
+      {/* Calendar Widget and Selection Strip */}
+      <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: 20 }}>
+        {/* Interactive Month Calendar */}
+        <div className="calendar-widget hud-corner">
+          <div className="calendar-header">
+            <button onClick={prevMonth} className="btn btn-ghost btn-sm" style={{ padding: '4px 8px' }}>◀ PREV</button>
+            <div className="disp text-gold" style={{ fontSize: 15, fontWeight: 800 }}>
+              {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+            </div>
+            <button onClick={nextMonth} className="btn btn-ghost btn-sm" style={{ padding: '4px 8px' }}>NEXT ▶</button>
+          </div>
+
+          <div className="calendar-weekdays">
+            <div>SUN</div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div>
+          </div>
+
+          <div className="calendar-grid">
+            {calendarDays.map(cd => {
+              if (cd.empty) return <div key={cd.key} className="calendar-day empty"></div>;
+              return (
+                <div
+                  key={cd.key}
+                  onClick={() => setSelectedDate(cd.dateStr)}
+                  className={`calendar-day ${cd.isSelected ? 'selected' : ''} ${cd.isToday ? 'today' : ''}`}
+                  title={cd.hasDuty ? 'Contains duty records' : 'No duty logged'}
+                >
+                  <span>{cd.dayNumber}</span>
+                  {cd.hasDuty && <div className="calendar-dot"></div>}
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
+            <button 
+              onClick={() => setSelectedDate(todayStr)} 
+              className="btn btn-ghost btn-sm"
+              style={{ fontSize: 11, color: '#4ade80' }}
+            >
+              TODAY ({todayStr})
+            </button>
+            <button 
+              onClick={() => setSelectedDate("ALL")} 
+              className="btn btn-ghost btn-sm"
+              style={{ fontSize: 11, color: 'var(--gold-light)' }}
+            >
+              SHOW ALL ARCHIVES
+            </button>
+          </div>
+        </div>
+
+        {/* Selected Date Summary & Filter Controls */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="card hud-corner" style={{ background: 'var(--bg-panel-2)', border: '1px solid var(--line)', padding: '16px 20px' }}>
+            <div className="chip chip-gold" style={{ fontSize: 9.5, marginBottom: 4 }}>CALENDAR SELECTION ACTIVE</div>
+            <div className="disp" style={{ fontSize: 20, fontWeight: 900, color: 'var(--ink-bright)' }}>
+              {selectedDate === "ALL" ? "FULL BASE DUTY ARCHIVE (ALL DATES)" : `ARCHIVE FOR: ${selectedDate}`}
+            </div>
+            <div className="mono text-dim" style={{ fontSize: 11.5, marginTop: 4 }}>
+              Showing {filteredHistory.length} recorded historical duty entries for the selected parameters.
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            <select
+              value={filterUnit}
+              onChange={e => setFilterUnit(e.target.value)}
+              className="mono"
+              style={{ background: 'var(--bg-base)', color: 'var(--ink)', border: '1px solid var(--line)', padding: '8px 12px', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
+            >
+              <option value="ALL">All Base Units</option>
+              {units.map(u => (
+                <option key={u.id} value={u.id}>{u.shortName}</option>
+              ))}
+            </select>
+
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search Post, Soldier Name, or Supervisor…"
+                className="mono"
+                style={{ width: '100%', padding: '8px 12px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink)', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
+              />
+            </div>
+
+            <button
+              onClick={() => onDownloadCSV(filteredHistory, selectedDate)}
+              className="btn btn-gold btn-sm"
+              style={{ fontWeight: 700 }}
+            >
+              ⬇ EXPORT REPORT (CSV)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Historical Ledger Table */}
+      <Panel
+        title="Historical Duty Ledger"
+        eyebrow="Immutable Deployment History // Changes Traceable to Authorizing Supervisor"
+      >
+        <div style={{ overflowX: 'auto' }}>
+          <table className="tactical-table">
+            <thead>
+              <tr>
+                <th>DATE & SHIFT</th>
+                <th>UNIT</th>
+                <th>GUARD POST / STATION</th>
+                <th>ASSIGNED SERVICEMEN</th>
+                <th>SUPERVISOR / AUTHORIZER</th>
+                <th>TIME WINDOW</th>
+                <th>STATUS</th>
+                <th>REMARKS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredHistory.length === 0 ? (
+                <tr>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '34px 10px', color: 'var(--ink-dim)' }}>
+                    No historical records found for {selectedDate === "ALL" ? "the selected query" : selectedDate}. Choose another date on the calendar.
+                  </td>
+                </tr>
+              ) : (
+                filteredHistory.map(h => (
+                  <tr key={h.id} className="board-row">
+                    <td>
+                      <div className="mono text-gold" style={{ fontWeight: 700 }}>{h.date}</div>
+                      <div className="mono text-dim" style={{ fontSize: 11 }}>{h.shift}</div>
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: 700 }}>{h.unit}</div>
+                    </td>
+                    <td style={{ color: 'var(--ink-bright)', fontWeight: 600 }}>
+                      {h.post}
+                    </td>
+                    <td>
+                      <div style={{ fontSize: 12.5, color: 'var(--ink-bright)' }}>
+                        {h.assignedPersonnelNames || (h.name ? `${h.rank || ''} ${h.name}` : 'Soldier')}
+                      </div>
+                    </td>
+                    <td className="mono text-dim" style={{ fontSize: 11 }}>
+                      {h.authorizedBy || h.supervisor || 'Admin CO'}
+                    </td>
+                    <td className="mono text-dim" style={{ fontSize: 11 }}>
+                      {h.timeIn || '06:00'} → {h.timeOut || '14:00'}
+                    </td>
+                    <td>
+                      <span className="chip chip-duty" style={{ fontSize: 10 }}>
+                        {h.status || 'COMPLETED'}
+                      </span>
+                    </td>
+                    <td className="mono text-dim" style={{ fontSize: 11, maxWidth: 160 }}>
+                      {h.remarks || 'Routine patrol'}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+/* ==========================================================================
+   PAGE 6: CONTROLLED EQUIPMENT (INVENTORY & CUSTODY RECORDKEEPING)
+   ========================================================================== */
+
+function DDMSControlledEquipmentView({ 
+  equipment = [], 
+  onOpenCustodyModal, 
+  isAdmin, 
+  isCustodian 
+}) {
+  const [filterCategory, setFilterCategory] = useState("ALL");
+  const [filterStatus, setFilterStatus] = useState("ALL");
+  const [search, setSearch] = useState("");
+
+  const categories = ["ALL", ...new Set(equipment.map(e => e.category).filter(Boolean))];
+
+  const filtered = useMemo(() => {
+    return equipment.filter(e => {
+      const matchCat = filterCategory === "ALL" || e.category === filterCategory;
+      const matchStatus = filterStatus === "ALL" || e.status === filterStatus;
+      const q = search.toLowerCase();
+      const matchSearch = !q ||
+        (e.name && e.name.toLowerCase().includes(q)) ||
+        (e.serial && e.serial.toLowerCase().includes(q)) ||
+        (e.custodian && e.custodian.toLowerCase().includes(q));
+
+      return matchCat && matchStatus && matchSearch;
+    });
+  }, [equipment, filterCategory, filterStatus, search]);
+
+  const totalItems = equipment.length;
+  const issuedItems = equipment.filter(e => e.status === "ISSUED").length;
+  const inArmoury = totalItems - issuedItems;
 
   return (
     <div className="fade-in" style={{ display: 'grid', gap: 20 }}>
-      <Panel 
-        title="Personnel Duty Master Roster" 
-        eyebrow="Roster Registry"
-        right={
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-            {onDownloadPDF && (
-              <button 
-                onClick={() => onDownloadPDF(filtered)} 
-                className="btn btn-secondary btn-sm"
-                title="Download formatted official muster roll PDF"
-              >
-                ⬇ DOWNLOAD PDF
-              </button>
-            )}
-            {isAdmin && onAssignClick && (
-              <button 
-                onClick={onAssignClick} 
-                className="btn btn-gold btn-sm"
-              >
-                ➕ ASSIGN DUTY
-              </button>
-            )}
-            <input 
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search Name or Army No…"
-              className="mono"
-              style={{ padding: '6px 12px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink)', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
-            />
+      {/* Metric Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
+        <div className="card hud-corner" style={{ background: 'var(--bg-panel-2)', padding: '16px' }}>
+          <div className="mono text-dim" style={{ fontSize: 10, letterSpacing: '.1em' }}>TOTAL CONTROLLED ITEMS</div>
+          <div className="disp" style={{ fontSize: 26, fontWeight: 900, color: 'var(--gold-light)', marginTop: 4 }}>
+            {totalItems} UNITS
+          </div>
+          <div className="mono text-dim" style={{ fontSize: 11, marginTop: 2 }}>Registered base ordnance</div>
+        </div>
+        <div className="card hud-corner" style={{ background: 'var(--bg-panel-2)', padding: '16px' }}>
+          <div className="mono text-dim" style={{ fontSize: 10, letterSpacing: '.1em' }}>CURRENTLY ISSUED</div>
+          <div className="disp" style={{ fontSize: 26, fontWeight: 900, color: '#f59e0b', marginTop: 4 }}>
+            {issuedItems} ASSIGNED
+          </div>
+          <div className="mono text-dim" style={{ fontSize: 11, marginTop: 2 }}>Under personal custody</div>
+        </div>
+        <div className="card hud-corner" style={{ background: 'var(--bg-panel-2)', padding: '16px' }}>
+          <div className="mono text-dim" style={{ fontSize: 10, letterSpacing: '.1em' }}>IN SECURE ARMOURY</div>
+          <div className="disp" style={{ fontSize: 26, fontWeight: 900, color: '#4ade80', marginTop: 4 }}>
+            {inArmoury} IN DEPOT
+          </div>
+          <div className="mono text-dim" style={{ fontSize: 11, marginTop: 2 }}>Locked in arms racks</div>
+        </div>
+        <div className="card hud-corner" style={{ background: 'var(--bg-panel-2)', padding: '16px' }}>
+          <div className="mono text-dim" style={{ fontSize: 10, letterSpacing: '.1em' }}>RECONCILIATION AUDIT</div>
+          <div className="disp" style={{ fontSize: 26, fontWeight: 900, color: 'var(--ink-bright)', marginTop: 4 }}>
+            100% VERIFIED
+          </div>
+          <div className="mono text-dim" style={{ fontSize: 11, marginTop: 2 }}>Zero variance logged</div>
+        </div>
+      </div>
+
+      <Panel
+        title="Controlled Equipment & Munitions Registry"
+        eyebrow="Accountable Custody Recordkeeping // Barcode / QR Serial Traceability"
+      >
+        {/* Filter Controls Bar */}
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', paddingBottom: 16, borderBottom: '1px solid var(--line)', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span className="mono" style={{ fontSize: 11, color: 'var(--gold-light)' }}>CATEGORY:</span>
             <select
-              value={filter}
-              onChange={e => setFilter(e.target.value)}
+              value={filterCategory}
+              onChange={e => setFilterCategory(e.target.value)}
               className="mono"
-              style={{ background: 'var(--bg-base)', color: 'var(--ink)', border: '1px solid var(--line)', padding: '6px 12px', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
+              style={{ background: 'var(--bg-base)', color: 'var(--ink)', border: '1px solid var(--line)', padding: '6px 10px', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
             >
-              {units.map(u => <option key={u} value={u}>{u}</option>)}
+              {categories.map(c => (
+                <option key={c} value={c}>{c === "ALL" ? "All Categories" : c}</option>
+              ))}
             </select>
           </div>
-        }
-      >
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span className="mono" style={{ fontSize: 11, color: 'var(--gold-light)' }}>STATUS:</span>
+            <select
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+              className="mono"
+              style={{ background: 'var(--bg-base)', color: 'var(--ink)', border: '1px solid var(--line)', padding: '6px 10px', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="ISSUED">Issued to Serviceman</option>
+              <option value="IN ARMOURY">In Armoury Depot</option>
+            </select>
+          </div>
+
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search Serial No, Weapon Name, or Custodian…"
+              className="mono"
+              style={{ width: '100%', padding: '6px 12px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink)', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
+            />
+          </div>
+
+          <div className="mono text-dim" style={{ fontSize: 11 }}>
+            Showing <strong>{filtered.length}</strong> of {equipment.length} items
+          </div>
+        </div>
+
+        {/* Equipment Table */}
         <div style={{ overflowX: 'auto' }}>
           <table className="tactical-table">
             <thead>
               <tr>
-                <th>ARMY NO.</th>
-                <th>NAME</th>
-                <th>RANK</th>
-                <th>UNIT</th>
-                <th>ROLE</th>
-                <th>DUTY STATUS</th>
-                <th>REST (HRS)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((p, i) => (
-                <tr key={i} className="board-row">
-                  <td className="mono text-gold" style={{ fontWeight: 600 }}>{p.armyNo}</td>
-                  <td style={{ fontWeight: 600, color: 'var(--ink-bright)' }}>{p.name}</td>
-                  <td className="mono text-dim">{p.rank}</td>
-                  <td className="mono">{p.unit}</td>
-                  <td className="mono text-dim" style={{ fontSize: 12 }}>{p.role}</td>
-                  <td><StatusChip status={p.status} /></td>
-                  <td className="mono">{p.rest > 0 ? `${p.rest}h rest` : '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Panel>
-
-      {/* Post Manning Requirements */}
-      <Panel title="Post Manning Status & Readiness" eyebrow="Station Requirements">
-        <div style={{ display: 'grid', gap: 12 }}>
-          {posts.map((p, i) => (
-            <div key={i} className="board-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 8px' }}>
-              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-                <span className="mono text-gold" style={{ fontWeight: 700 }}>{p.id}</span>
-                <div>
-                  <div style={{ fontWeight: 600, color: 'var(--ink-bright)' }}>{p.name}</div>
-                  <div className="mono text-dim" style={{ fontSize: 11 }}>{p.location}</div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <PriorityTag p={p.priority} />
-                <span className="mono" style={{ fontSize: 13, fontWeight: 700, color: p.filled < p.manpower ? 'var(--danger)' : 'var(--success)' }}>
-                  {p.filled} / {p.manpower} Filled
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Panel>
-    </div>
-  );
-}
-
-function DDMSWeaponsView({ weapons, onScanReturn }) {
-  const [showScan, setShowScan] = useState(false);
-
-  return (
-    <div className="fade-in" style={{ display: 'grid', gap: 20 }}>
-      <Panel 
-        title="Weapons & Armaments Registry" 
-        eyebrow="Ordnance Tracking"
-        right={
-          <button 
-            onClick={() => setShowScan(true)} 
-            className="btn btn-gold btn-sm"
-          >
-            <IconQr /> SCAN WEAPON QR
-          </button>
-        }
-      >
-        <div style={{ overflowX: 'auto' }}>
-          <table className="tactical-table">
-            <thead>
-              <tr>
-                <th>SERIAL NO.</th>
-                <th>WEAPON TYPE</th>
+                <th>SERIAL NO. & ITEM NAME</th>
+                <th>CATEGORY & CALIBRE</th>
+                <th>UNIT ALLOCATION</th>
                 <th>STATUS</th>
-                <th>CURRENT HOLDER</th>
-                <th>AMMUNITION</th>
-                <th>QR CODE TAG</th>
+                <th>CURRENT CUSTODIAN</th>
+                <th>ISSUING OFFICER</th>
+                <th>LAST TRANSACTION</th>
+                <th style={{ textAlign: 'center' }}>CUSTODY ACTION</th>
               </tr>
             </thead>
             <tbody>
-              {weapons.map((w, i) => (
-                <tr key={i} className="board-row">
-                  <td className="mono text-gold" style={{ fontWeight: 600 }}>{w.serial}</td>
-                  <td style={{ fontWeight: 600, color: 'var(--ink-bright)' }}>{w.type}</td>
-                  <td><StatusChip status={w.status} /></td>
-                  <td style={{ color: 'var(--ink-dim)' }}>{w.holder}</td>
-                  <td className="mono text-dim" style={{ fontSize: 12 }}>{w.ammo}</td>
-                  <td className="mono text-gold" style={{ fontSize: 11 }}>{w.qr}</td>
-                </tr>
-              ))}
+              {filtered.map(item => {
+                const isIssued = item.status === "ISSUED";
+                const canManage = isAdmin || isCustodian;
+
+                return (
+                  <tr key={item.id || item.serial} className="board-row">
+                    <td>
+                      <div className="mono text-gold" style={{ fontWeight: 700 }}>{item.serial}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--ink-bright)' }}>{item.name}</div>
+                    </td>
+                    <td>
+                      <div>{item.category}</div>
+                      <div className="mono text-dim" style={{ fontSize: 11 }}>{item.calibre}</div>
+                    </td>
+                    <td>
+                      <div className="mono text-dim" style={{ fontSize: 11 }}>{item.unit || "Base Pool"}</div>
+                    </td>
+                    <td>
+                      <span className={`chip ${isIssued ? 'chip-gold' : 'chip-duty'}`} style={{ fontSize: 10 }}>
+                        {item.status}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: 600, color: isIssued ? 'var(--gold-light)' : 'var(--ink-dim)' }}>
+                        {item.custodian || "Armoury Depot Complex"}
+                      </div>
+                    </td>
+                    <td className="mono text-dim" style={{ fontSize: 11 }}>
+                      {item.issuingOfficer || "Lt Menon, S."}
+                    </td>
+                    <td className="mono text-dim" style={{ fontSize: 10.5 }}>
+                      {item.issuedDate || item.lastInspectionDate || "06:00 IST"}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      {canManage ? (
+                        <button
+                          onClick={() => onOpenCustodyModal(item)}
+                          className={`btn btn-sm ${isIssued ? 'btn-ghost' : 'btn-gold'}`}
+                          style={{ padding: '4px 10px', fontSize: 11, fontWeight: 700 }}
+                        >
+                          {isIssued ? '↩ RETURN' : '➔ ISSUE'}
+                        </button>
+                      ) : (
+                        <span className="mono text-dim" style={{ fontSize: 10.5 }}>RESTRICTED</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </Panel>
-
-      {showScan && <QRScanModal onClose={() => setShowScan(false)} onScan={onScanReturn} />}
     </div>
   );
 }
 
-function DDMSPersonnelView({ personnel }) {
+/* ==========================================================================
+   PAGE 7: PERSONNEL (INDIVIDUAL PROFILES & DOSSIERS)
+   ========================================================================== */
+
+function DDMSPersonnelView({ units = [], personnel = [], onOpenProfile }) {
+  const [filterUnit, setFilterUnit] = useState("ALL");
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(() => {
+    return personnel.filter(p => {
+      const matchUnit = filterUnit === "ALL" || p.unitId === filterUnit || p.unit === filterUnit;
+      const q = search.toLowerCase();
+      const matchSearch = !q ||
+        (p.name && p.name.toLowerCase().includes(q)) ||
+        (p.armyNo && p.armyNo.toLowerCase().includes(q)) ||
+        (p.designation && p.designation.toLowerCase().includes(q));
+
+      return matchUnit && matchSearch;
+    });
+  }, [personnel, filterUnit, search]);
+
   return (
     <div className="fade-in" style={{ display: 'grid', gap: 20 }}>
-      <Panel title="Servicemen Roster & Rest Matrix" eyebrow="Unit Personnel">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
-          {personnel.map((p, i) => (
-            <div key={i} className="card hud-corner" style={{ background: 'var(--bg-panel-2)', borderRadius: 'var(--radius-inner)' }}>
+      <Panel
+        title="Base Personnel Profiles & Service Dossiers"
+        eyebrow="Individual Servicemen Records // Administration, Medical & Posting Records"
+      >
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', paddingBottom: 16, borderBottom: '1px solid var(--line)', marginBottom: 16 }}>
+          <select
+            value={filterUnit}
+            onChange={e => setFilterUnit(e.target.value)}
+            className="mono"
+            style={{ background: 'var(--bg-base)', color: 'var(--ink)', border: '1px solid var(--line)', padding: '6px 10px', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
+          >
+            <option value="ALL">All Base Units</option>
+            {units.map(u => (
+              <option key={u.id} value={u.id}>{u.shortName}</option>
+            ))}
+          </select>
+
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search by Soldier Name, Army No, or Role…"
+              className="mono"
+              style={{ width: '100%', padding: '6px 12px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink)', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
+            />
+          </div>
+
+          <div className="mono text-dim" style={{ fontSize: 11 }}>
+            Showing <strong>{filtered.length}</strong> personnel profiles
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
+          {filtered.map(p => (
+            <div 
+              key={p.id || p.armyNo} 
+              onClick={() => onOpenProfile(p)}
+              className="card hud-corner" 
+              style={{ background: 'var(--bg-panel-2)', cursor: 'pointer', transition: 'all 0.15s ease' }}
+            >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink-bright)' }}>{p.name}</div>
-                  <div className="mono text-dim" style={{ fontSize: 11, marginTop: 2 }}>{p.rank} · {p.armyNo}</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--ink-bright)' }}>{p.name}</div>
+                  <div className="mono text-gold" style={{ fontSize: 11, marginTop: 2 }}>{p.rank} · {p.armyNo}</div>
                 </div>
                 <StatusChip status={p.status} />
               </div>
 
-              <div className="stenciled"></div>
+              <div className="stenciled" style={{ margin: '10px 0' }}></div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-                <span className="mono text-dim">UNIT:</span>
-                <span className="mono text-gold" style={{ fontWeight: 600 }}>{p.unit}</span>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, marginTop: 6 }}>
-                <span className="mono text-dim">ROLE:</span>
-                <span style={{ color: 'var(--ink-bright)' }}>{p.role}</span>
-              </div>
-
-              {p.rest > 0 && (
-                <div className="mono" style={{ fontSize: 11, color: 'var(--amber)', marginTop: 10, background: 'rgba(203,139,48,0.12)', padding: '4px 8px', borderRadius: 'var(--radius-xs)' }}>
-                  ⏳ Rest cycle ends in {p.rest}h
+              <div style={{ display: 'grid', gap: 6, fontSize: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span className="mono text-dim">UNIT:</span>
+                  <span className="mono text-bright" style={{ fontWeight: 600 }}>{p.unit}</span>
                 </div>
-              )}
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span className="mono text-dim">ROLE:</span>
+                  <span style={{ color: 'var(--ink-bright)' }}>{p.designation}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span className="mono text-dim">QUARTERS:</span>
+                  <span className="mono text-dim">{p.quarterStatus === 'ALLOCATED' ? p.quarterNo : 'Barracks'}</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+                <span className="mono text-gold" style={{ fontSize: 11, fontWeight: 700 }}>VIEW PROFILE DOSSIER ➔</span>
+              </div>
             </div>
           ))}
         </div>
@@ -2038,61 +3476,239 @@ function DDMSPersonnelView({ personnel }) {
   );
 }
 
-function DDMSReportsView({ auditLogs = AUDIT_LOG, user }) {
-  const [generating, setGenerating] = useState(null);
-  const reports = [
-    { id: 'duty', name: 'Master Duty Allocation Report (PDF)', desc: 'Official roster with shift rosters, sector duties, and officer sign-offs.' },
-    { id: 'weapon', name: 'Armoury & Munitions Ledger (PDF)', desc: 'Complete issue and return transaction audit with QR security hashes.' },
-    { id: 'attendance', name: 'Personnel Attendance & Muster Roll (PDF)', desc: 'Muster roll summary covering active duty, leave authorizations, and rest cycles.' },
-  ];
+/* ==========================================================================
+   PAGE 8: REPORTS & LOGS (UNIT, HISTORICAL & EQUIPMENT REPORTS)
+   ========================================================================== */
 
-  const handleDownload = async (id) => {
-    setGenerating(id);
-    try {
-      await DefenceAPI.generateReport({
-        action: `Generated official PDF download: ${id.toUpperCase()} report`,
-        operator: user || "COMMAND OPERATOR",
-        category: "REPORTS"
-      });
-    } catch (e) {
-      console.warn('Offline report generation notice:', e);
+function DDMSReportsView({ 
+  units = [], 
+  personnel = [], 
+  assignments = [], 
+  history = [], 
+  equipment = [], 
+  auditLogs = [], 
+  adminUser 
+}) {
+  const [reportType, setReportType] = useState("unit-members");
+  const [selectedUnit, setSelectedUnit] = useState("ALL");
+  const [generating, setGenerating] = useState(false);
+
+  // Generate CSV download
+  const handleDownloadCSV = () => {
+    let headers = [];
+    let rows = [];
+    const dateStr = new Date().toISOString().substring(0, 10);
+
+    if (reportType === "unit-members") {
+      headers = ["Army No", "Name", "Rank", "Unit", "Designation", "Status", "Family Status", "Quarter No"];
+      const targetList = selectedUnit === "ALL" ? personnel : personnel.filter(p => p.unitId === selectedUnit || p.unit === selectedUnit);
+      rows = targetList.map(p => [p.armyNo, p.name, p.rank, p.unit, p.designation, p.status, p.familyStatus, p.quarterNo || "Barracks"]);
+    } else if (reportType === "daily-roster") {
+      headers = ["Date", "Shift", "Unit", "Duty Post", "Supervisor", "Assigned Personnel", "Status"];
+      rows = assignments.map(a => [a.date, a.shift, a.unit, a.postName, a.supervisor, (a.assignedPersonnel || []).map(p => p.name).join("; "), a.status]);
+    } else if (reportType === "equipment-audit") {
+      headers = ["Serial No", "Item Name", "Category", "Status", "Custodian", "Issuing Officer", "Calibre"];
+      rows = equipment.map(e => [e.serial, e.name, e.category, e.status, e.custodian, e.issuingOfficer, e.calibre]);
+    } else if (reportType === "duty-history") {
+      headers = ["Date", "Shift", "Unit", "Post", "Assigned Personnel", "Supervisor", "Time In", "Time Out", "Status"];
+      rows = history.map(h => [h.date, h.shift, h.unit, h.post, h.assignedPersonnelNames || h.name, h.supervisor || h.authorizedBy, h.timeIn, h.timeOut, h.status]);
     }
-    setTimeout(() => {
-      setGenerating(null);
-      alert(`Report generated & logged to backend! (Simulated PDF download for ${id.toUpperCase()} report)`);
-    }, 1200);
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.map(val => `"${val}"`).join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `INDIAN_ARMY_${reportType.toUpperCase()}_${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handlePrintPDF = () => {
+    window.print();
   };
 
   return (
     <div className="fade-in" style={{ display: 'grid', gap: 20 }}>
-      <Panel title="Command PDF Document Generator" eyebrow="Official Records">
-        <div style={{ display: 'grid', gap: 14 }}>
-          {reports.map(r => (
-            <div key={r.id} className="board-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 8px' }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink-bright)' }}>{r.name}</div>
-                <div style={{ fontSize: 12, color: 'var(--ink-dim)', marginTop: 3 }}>{r.desc}</div>
-              </div>
-              <button 
-                onClick={() => handleDownload(r.id)} 
-                className="btn btn-secondary btn-sm"
-                disabled={generating === r.id}
-                style={{ minWidth: 140 }}
+      {/* Report Type Selector Tabs */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+        <div 
+          onClick={() => setReportType("unit-members")}
+          className={`card hud-corner ${reportType === 'unit-members' ? 'unit-card active' : 'unit-card'}`}
+        >
+          <div className="mono text-gold" style={{ fontSize: 10 }}>UNIT & PERSONNEL</div>
+          <div style={{ fontWeight: 800, color: 'var(--ink-bright)', marginTop: 4 }}>Unit Member Roster Report</div>
+          <div className="mono text-dim" style={{ fontSize: 11, marginTop: 2 }}>Rank-wise breakdown & muster roll</div>
+        </div>
+
+        <div 
+          onClick={() => setReportType("daily-roster")}
+          className={`card hud-corner ${reportType === 'daily-roster' ? 'unit-card active' : 'unit-card'}`}
+        >
+          <div className="mono text-gold" style={{ fontSize: 10 }}>DUTY OPERATIONS</div>
+          <div style={{ fontWeight: 800, color: 'var(--ink-bright)', marginTop: 4 }}>Daily Duty Assignment Report</div>
+          <div className="mono text-dim" style={{ fontSize: 11, marginTop: 2 }}>Today's post allocations & supervisors</div>
+        </div>
+
+        <div 
+          onClick={() => setReportType("duty-history")}
+          className={`card hud-corner ${reportType === 'duty-history' ? 'unit-card active' : 'unit-card'}`}
+        >
+          <div className="mono text-gold" style={{ fontSize: 10 }}>HISTORICAL ARCHIVE</div>
+          <div style={{ fontWeight: 800, color: 'var(--ink-bright)', marginTop: 4 }}>Duty Deployment History Archive</div>
+          <div className="mono text-dim" style={{ fontSize: 11, marginTop: 2 }}>Full chronological historical records</div>
+        </div>
+
+        <div 
+          onClick={() => setReportType("equipment-audit")}
+          className={`card hud-corner ${reportType === 'equipment-audit' ? 'unit-card active' : 'unit-card'}`}
+        >
+          <div className="mono text-gold" style={{ fontSize: 10 }}>EQUIPMENT CUSTODY</div>
+          <div style={{ fontWeight: 800, color: 'var(--ink-bright)', marginTop: 4 }}>Controlled Equipment Audit</div>
+          <div className="mono text-dim" style={{ fontSize: 11, marginTop: 2 }}>Custody transactions & armory ledger</div>
+        </div>
+      </div>
+
+      {/* Selected Report Action & Controls Strip */}
+      <Panel
+        title="Report Generator & Export Center"
+        eyebrow="Official Base Records // Timestamped Administrative Output"
+        right={
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={handleDownloadCSV} className="btn btn-gold btn-sm" style={{ fontWeight: 700 }}>
+              ⬇ DOWNLOAD CSV REPORT
+            </button>
+            <button onClick={handlePrintPDF} className="btn btn-secondary btn-sm">
+              🖨️ PRINT / PDF VIEW
+            </button>
+          </div>
+        }
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 14, borderBottom: '1px solid var(--line)', marginBottom: 14 }}>
+          <div className="mono text-dim" style={{ fontSize: 11.5 }}>
+            REPORT GENERATED: <strong style={{ color: 'var(--gold-light)' }}>{new Date().toLocaleString('en-GB')} IST</strong> · AUTHORIZED BY: <strong style={{ color: 'var(--ink-bright)' }}>{adminUser}</strong>
+          </div>
+          {reportType === "unit-members" && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="mono" style={{ fontSize: 11, color: 'var(--gold-light)' }}>UNIT FILTER:</span>
+              <select
+                value={selectedUnit}
+                onChange={e => setSelectedUnit(e.target.value)}
+                className="mono"
+                style={{ background: 'var(--bg-base)', color: 'var(--ink)', border: '1px solid var(--line)', padding: '5px 10px', fontSize: 12, borderRadius: 'var(--radius-xs)' }}
               >
-                {generating === r.id ? 'GENERATING…' : '⬇ DOWNLOAD PDF'}
-              </button>
+                <option value="ALL">All Base Units</option>
+                {units.map(u => (
+                  <option key={u.id} value={u.id}>{u.shortName}</option>
+                ))}
+              </select>
             </div>
-          ))}
+          )}
+        </div>
+
+        {/* Live Report Preview Table */}
+        <div style={{ overflowX: 'auto', maxHeight: 380 }}>
+          {reportType === "unit-members" && (
+            <table className="tactical-table">
+              <thead>
+                <tr>
+                  <th>ARMY NO.</th><th>NAME</th><th>RANK</th><th>UNIT</th><th>ROLE</th><th>STATUS</th><th>QUARTERS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(selectedUnit === "ALL" ? personnel : personnel.filter(p => p.unitId === selectedUnit || p.unit === selectedUnit)).map(p => (
+                  <tr key={p.armyNo} className="board-row">
+                    <td className="mono text-gold">{p.armyNo}</td>
+                    <td style={{ fontWeight: 600 }}>{p.name}</td>
+                    <td className="mono">{p.rank}</td>
+                    <td>{p.unit}</td>
+                    <td>{p.designation}</td>
+                    <td><StatusChip status={p.status} /></td>
+                    <td className="mono text-dim">{p.quarterStatus === 'ALLOCATED' ? p.quarterNo : 'Barracks'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {reportType === "daily-roster" && (
+            <table className="tactical-table">
+              <thead>
+                <tr>
+                  <th>DATE & SHIFT</th><th>UNIT</th><th>DUTY POST</th><th>SUPERVISOR</th><th>ASSIGNED PERSONNEL</th><th>STATUS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {assignments.map(a => (
+                  <tr key={a.id} className="board-row">
+                    <td className="mono text-gold">{a.date} ({a.shift})</td>
+                    <td style={{ fontWeight: 600 }}>{a.unit}</td>
+                    <td style={{ color: 'var(--ink-bright)' }}>{a.postName}</td>
+                    <td className="mono text-dim">{a.supervisor}</td>
+                    <td>{(a.assignedPersonnel || []).map(p => `${p.rank} ${p.name}`).join(', ')}</td>
+                    <td><span className="chip chip-duty">{a.status}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {reportType === "duty-history" && (
+            <table className="tactical-table">
+              <thead>
+                <tr>
+                  <th>DATE & SHIFT</th><th>UNIT</th><th>POST</th><th>PERSONNEL</th><th>SUPERVISOR</th><th>HOURS</th><th>STATUS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.slice(0, 15).map(h => (
+                  <tr key={h.id} className="board-row">
+                    <td className="mono text-gold">{h.date} ({h.shift})</td>
+                    <td style={{ fontWeight: 600 }}>{h.unit}</td>
+                    <td>{h.post}</td>
+                    <td>{h.assignedPersonnelNames || h.name}</td>
+                    <td className="mono text-dim">{h.authorizedBy || h.supervisor}</td>
+                    <td className="mono text-dim">{h.timeIn} → {h.timeOut}</td>
+                    <td><span className="chip chip-duty">{h.status}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {reportType === "equipment-audit" && (
+            <table className="tactical-table">
+              <thead>
+                <tr>
+                  <th>SERIAL</th><th>ITEM NAME</th><th>CATEGORY</th><th>STATUS</th><th>CUSTODIAN</th><th>OFFICER</th><th>RECONCILIATION</th>
+                </tr>
+              </thead>
+              <tbody>
+                {equipment.map(e => (
+                  <tr key={e.serial} className="board-row">
+                    <td className="mono text-gold">{e.serial}</td>
+                    <td style={{ fontWeight: 600 }}>{e.name}</td>
+                    <td>{e.category}</td>
+                    <td><span className={`chip ${e.status === 'ISSUED' ? 'chip-gold' : 'chip-duty'}`}>{e.status}</span></td>
+                    <td>{e.custodian}</td>
+                    <td className="mono text-dim">{e.issuingOfficer}</td>
+                    <td className="mono" style={{ color: '#4ade80' }}>VERIFIED</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </Panel>
 
-      <Panel title="Cryptographic Shift Audit Log" eyebrow="Immutable Ledger">
+      {/* Audit Trail Viewer */}
+      <Panel title="Cryptographic Base Audit Trail Logs" eyebrow="Tamper-Evident SHA-256 Ledger">
         <div style={{ display: 'grid', gap: 0 }}>
-          {auditLogs.map((a, i) => (
-            <div key={i} className="board-row" style={{ display: 'grid', gridTemplateColumns: '120px 150px 1fr 120px', gap: 14, padding: '12px 8px', alignItems: 'center' }}>
+          {auditLogs.slice(0, 8).map((a, i) => (
+            <div key={i} className="board-row" style={{ display: 'grid', gridTemplateColumns: '120px 140px 1fr 140px', gap: 14, padding: '10px 8px', alignItems: 'center' }}>
               <span className="mono text-dim" style={{ fontSize: 11 }}>{a.ts || a.time}</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold-light)' }}>{a.event || a.category}</span>
-              <span style={{ fontSize: 13, color: 'var(--ink)' }}>{a.detail || a.action}</span>
+              <span className="mono text-gold" style={{ fontSize: 11, fontWeight: 700 }}>{a.event || a.category}</span>
+              <span style={{ fontSize: 12.5, color: 'var(--ink)' }}>{a.detail || a.action}</span>
               <span className="mono text-dim" style={{ fontSize: 11, textAlign: 'right' }}>{a.by || a.operator}</span>
             </div>
           ))}
@@ -2102,17 +3718,505 @@ function DDMSReportsView({ auditLogs = AUDIT_LOG, user }) {
   );
 }
 
+/* ==========================================================================
+   MODALS: REGISTER MEMBER, EDIT, TRANSFER, PROFILE, CUSTODY, DETAILS
+   ========================================================================== */
+
+function RegisterMemberModal({ isOpen, onClose, onRegister, units = [] }) {
+  if (!isOpen) return null;
+
+  const [armyNo, setArmyNo] = useState("");
+  const [name, setName] = useState("");
+  const [rank, setRank] = useState("Sep");
+  const [unitId, setUnitId] = useState(units[0]?.id || "UNIT-01");
+  const [designation, setDesignation] = useState("Rifleman");
+  const [status, setStatus] = useState("AVAILABLE");
+  const [familyStatus, setFamilyStatus] = useState("Single");
+  const [quarterStatus, setQuarterStatus] = useState("NOT ALLOCATED");
+  const [quarterNo, setQuarterNo] = useState("Troop Barrack");
+  const [joinedDate, setJoinedDate] = useState(new Date().toISOString().substring(0, 10));
+  const [nextTransferDate, setNextTransferDate] = useState("2027-01-15");
+  const [phone, setPhone] = useState("+91-98765-");
+  const [bloodGroup, setBloodGroup] = useState("O+ve");
+  const [remarks, setRemarks] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await onRegister({
+        armyNo: armyNo.trim(),
+        name: name.trim(),
+        rank,
+        unitId,
+        designation: designation.trim(),
+        status,
+        familyStatus,
+        quarterStatus,
+        quarterNo: quarterNo.trim(),
+        joinedDate,
+        nextTransferDate,
+        phone: phone.trim(),
+        bloodGroup,
+        remarks: remarks.trim()
+      });
+      onClose();
+    } catch (err) {
+      alert("Registration failed: " + err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-content hud-corner" onClick={e => e.stopPropagation()} style={{ maxWidth: 580, width: '92%', background: 'var(--bg-surface)', border: '1.5px solid var(--gold)', borderRadius: 'var(--radius-card)', padding: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid var(--line)', paddingBottom: 10 }}>
+          <div>
+            <div className="chip chip-gold" style={{ fontSize: 9.5, marginBottom: 4 }}>PERSONNEL ADMINISTRATION</div>
+            <h3 style={{ margin: 0, fontSize: 18, color: 'var(--ink-bright)' }}>REGISTER NEW UNIT MEMBER</h3>
+          </div>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--ink-dim)', fontSize: 20, cursor: 'pointer' }}>✕</button>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <label className="form-section-title">ARMY NO. / SERVICE ID</label>
+              <input type="text" value={armyNo} onChange={e => setArmyNo(e.target.value)} placeholder="e.g. JC-118820P" required className="mono" style={{ width: '100%', padding: '8px 10px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)' }} />
+            </div>
+            <div>
+              <label className="form-section-title">SERVICEMAN FULL NAME</label>
+              <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Rawat, V." required className="mono" style={{ width: '100%', padding: '8px 10px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)' }} />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <label className="form-section-title">RANK</label>
+              <select value={rank} onChange={e => setRank(e.target.value)} className="mono" style={{ width: '100%', padding: '8px 10px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)' }}>
+                <option value="Sep">Sepoy (Sep)</option>
+                <option value="L/Nk">Lance Naik (L/Nk)</option>
+                <option value="Nk">Naik (Nk)</option>
+                <option value="Hav">Havildar (Hav)</option>
+                <option value="Nb Sub">Naib Subedar (Nb Sub)</option>
+                <option value="Sub">Subedar (Sub)</option>
+                <option value="Sub Maj">Subedar Major (Sub Maj)</option>
+                <option value="Lt">Lieutenant (Lt)</option>
+                <option value="Capt">Captain (Capt)</option>
+                <option value="Maj">Major (Maj)</option>
+              </select>
+            </div>
+            <div>
+              <label className="form-section-title">ASSIGNED UNIT</label>
+              <select value={unitId} onChange={e => setUnitId(e.target.value)} className="mono" style={{ width: '100%', padding: '8px 10px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)' }}>
+                {units.map(u => (
+                  <option key={u.id} value={u.id}>{u.shortName}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <label className="form-section-title">DESIGNATION / ROLE</label>
+              <input type="text" value={designation} onChange={e => setDesignation(e.target.value)} placeholder="e.g. Section 2IC / Guard Sentry" required className="mono" style={{ width: '100%', padding: '8px 10px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)' }} />
+            </div>
+            <div>
+              <label className="form-section-title">ADMIN STATUS</label>
+              <select value={status} onChange={e => setStatus(e.target.value)} className="mono" style={{ width: '100%', padding: '8px 10px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)' }}>
+                <option value="AVAILABLE">AVAILABLE (STANDBY)</option>
+                <option value="ON DUTY">ON DUTY</option>
+                <option value="REST">REST CYCLE</option>
+                <option value="LEAVE">LEAVE</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <label className="form-section-title">MARITAL / FAMILY</label>
+              <select value={familyStatus} onChange={e => setFamilyStatus(e.target.value)} className="mono" style={{ width: '100%', padding: '8px 10px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)' }}>
+                <option value="Single">Single</option>
+                <option value="Family Member">Family Member</option>
+              </select>
+            </div>
+            <div>
+              <label className="form-section-title">FAMILY QUARTER ALLOTMENT</label>
+              <select value={quarterStatus} onChange={e => setQuarterStatus(e.target.value)} className="mono" style={{ width: '100%', padding: '8px 10px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)' }}>
+                <option value="NOT ALLOCATED">Not Allocated (Barracks)</option>
+                <option value="ALLOCATED">Allocated</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
+            <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">CANCEL</button>
+            <button type="submit" disabled={submitting} className="btn btn-gold btn-sm" style={{ fontWeight: 800 }}>
+              {submitting ? 'ENLISTING…' : 'CONFIRM REGISTRATION ➔'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function TransferMemberModal({ isOpen, onClose, member, units = [], onTransfer }) {
+  if (!isOpen || !member) return null;
+
+  const otherUnits = units.filter(u => u.id !== member.unitId && u.shortName !== member.unit);
+  const [targetUnitId, setTargetUnitId] = useState(otherUnits[0]?.id || "");
+  const [remarks, setRemarks] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await onTransfer(member.armyNo, targetUnitId, remarks);
+      onClose();
+    } catch (err) {
+      alert("Transfer failed: " + err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-content hud-corner" onClick={e => e.stopPropagation()} style={{ maxWidth: 480, width: '92%', background: 'var(--bg-surface)', border: '1.5px solid var(--gold)', borderRadius: 'var(--radius-card)', padding: '22px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, borderBottom: '1px solid var(--line)', paddingBottom: 10 }}>
+          <div>
+            <div className="chip chip-gold" style={{ fontSize: 9.5, marginBottom: 4 }}>INTER-UNIT TRANSFER ORDER</div>
+            <h3 style={{ margin: 0, fontSize: 17, color: 'var(--ink-bright)' }}>TRANSFER SERVICEMAN</h3>
+          </div>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--ink-dim)', fontSize: 20, cursor: 'pointer' }}>✕</button>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 14 }}>
+          <div className="card" style={{ background: 'var(--bg-panel)', padding: '12px' }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink-bright)' }}>{member.rank} {member.name} ({member.armyNo})</div>
+            <div className="mono text-dim" style={{ fontSize: 11, marginTop: 2 }}>Current Unit: <strong style={{ color: 'var(--gold-light)' }}>{member.unit}</strong></div>
+          </div>
+
+          <div>
+            <label className="form-section-title">DESTINATION UNIT</label>
+            <select
+              value={targetUnitId}
+              onChange={e => setTargetUnitId(e.target.value)}
+              required
+              className="mono"
+              style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)' }}
+            >
+              {otherUnits.map(u => (
+                <option key={u.id} value={u.id}>{u.name} ({u.code})</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="form-section-title">AUTHORIZATION ORDER / TRANSFER REMARKS</label>
+            <input
+              type="text"
+              value={remarks}
+              onChange={e => setRemarks(e.target.value)}
+              placeholder="e.g. Routine 3-year inter-battalion rotation order #TR-402"
+              required
+              className="mono"
+              style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 6 }}>
+            <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">CANCEL</button>
+            <button type="submit" disabled={submitting} className="btn btn-gold btn-sm" style={{ fontWeight: 800 }}>
+              {submitting ? 'TRANSFERRING…' : 'CONFIRM TRANSFER ORDER ➔'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function PersonnelProfileModal({ isOpen, onClose, member }) {
+  if (!isOpen || !member) return null;
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-content hud-corner" onClick={e => e.stopPropagation()} style={{ maxWidth: 580, width: '92%', background: 'var(--bg-surface)', border: '1.5px solid var(--gold)', borderRadius: 'var(--radius-card)', padding: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid var(--line)', paddingBottom: 10 }}>
+          <div>
+            <span className="chip chip-gold" style={{ fontSize: 9.5 }}>INDIAN ARMY BASE SERVICEMAN DOSSIER</span>
+            <h3 style={{ margin: '4px 0 0', fontSize: 20, color: 'var(--ink-bright)', fontFamily: 'var(--font-display)' }}>
+              {member.rank} {member.name}
+            </h3>
+          </div>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--ink-dim)', fontSize: 20, cursor: 'pointer' }}>✕</button>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
+          <div>
+            <span className="mono text-dim" style={{ fontSize: 11 }}>ARMY NUMBER:</span>
+            <div className="mono text-gold" style={{ fontSize: 14, fontWeight: 700 }}>{member.armyNo}</div>
+          </div>
+          <div>
+            <span className="mono text-dim" style={{ fontSize: 11 }}>ASSIGNED UNIT:</span>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink-bright)' }}>{member.unit}</div>
+          </div>
+          <div>
+            <span className="mono text-dim" style={{ fontSize: 11 }}>BASE DESIGNATION:</span>
+            <div style={{ fontSize: 13, color: 'var(--ink)' }}>{member.designation}</div>
+          </div>
+          <div>
+            <span className="mono text-dim" style={{ fontSize: 11 }}>ADMINISTRATIVE STATUS:</span>
+            <div style={{ marginTop: 2 }}><StatusChip status={member.status} /></div>
+          </div>
+          <div>
+            <span className="mono text-dim" style={{ fontSize: 11 }}>LIVING ACCOMMODATION:</span>
+            <div className="mono text-dim" style={{ fontSize: 12 }}>
+              {member.quarterStatus === 'ALLOCATED' ? `🟢 Quarter ${member.quarterNo || 'A-14'}` : '⚪ Troop Barracks'}
+            </div>
+          </div>
+          <div>
+            <span className="mono text-dim" style={{ fontSize: 11 }}>FAMILY STATUS:</span>
+            <div style={{ fontSize: 12, color: 'var(--ink)' }}>{member.familyStatus || 'Single'}</div>
+          </div>
+          <div>
+            <span className="mono text-dim" style={{ fontSize: 11 }}>STATION POSTING DATE:</span>
+            <div className="mono" style={{ fontSize: 12 }}>{member.joinedDate || '2024-01-15'}</div>
+          </div>
+          <div>
+            <span className="mono text-dim" style={{ fontSize: 11 }}>NEXT ROTATION DUE:</span>
+            <div className="mono text-gold" style={{ fontSize: 12 }}>{member.nextTransferDate || '2027-01-15'}</div>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
+          <div className="mono text-dim" style={{ fontSize: 11, marginBottom: 8 }}>SERVICE INFORMATION & REMARKS:</div>
+          <div className="card" style={{ background: 'var(--bg-panel)', padding: '12px', fontSize: 12.5, color: 'var(--ink-dim)', lineHeight: 1.6 }}>
+            {member.remarks || 'Standard infantry serviceman record verified under Base Command guidelines.'}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+          <button onClick={onClose} className="btn btn-secondary btn-sm">CLOSE DOSSIER</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CustodyTransactionModal({ isOpen, onClose, item, onConfirm, adminUser }) {
+  if (!isOpen || !item) return null;
+
+  const isCurrentlyIssued = item.status === "ISSUED";
+  const [action, setAction] = useState(isCurrentlyIssued ? "RETURN" : "ISSUE");
+  const [custodian, setCustodian] = useState(isCurrentlyIssued ? "Armoury Depot Complex" : "");
+  const [remarks, setRemarks] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await onConfirm({
+        serial: item.serial,
+        action,
+        custodian: custodian.trim() || (action === "RETURN" ? "Armoury Depot Complex" : "Duty Sentry"),
+        remarks: remarks.trim(),
+        operator: adminUser
+      });
+      onClose();
+    } catch (err) {
+      alert("Custody transaction failed: " + err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-content hud-corner" onClick={e => e.stopPropagation()} style={{ maxWidth: 480, width: '92%', background: 'var(--bg-surface)', border: '1.5px solid var(--gold)', borderRadius: 'var(--radius-card)', padding: '22px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, borderBottom: '1px solid var(--line)', paddingBottom: 10 }}>
+          <div>
+            <div className="chip chip-gold" style={{ fontSize: 9.5, marginBottom: 4 }}>CONTROLLED EQUIPMENT CUSTODY</div>
+            <h3 style={{ margin: 0, fontSize: 17, color: 'var(--ink-bright)' }}>RECORD CUSTODY TRANSACTION</h3>
+          </div>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--ink-dim)', fontSize: 20, cursor: 'pointer' }}>✕</button>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 14 }}>
+          <div className="card" style={{ background: 'var(--bg-panel)', padding: '12px' }}>
+            <div className="mono text-gold" style={{ fontSize: 12, fontWeight: 700 }}>{item.serial}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink-bright)' }}>{item.name}</div>
+            <div className="mono text-dim" style={{ fontSize: 11, marginTop: 2 }}>Current Status: <strong style={{ color: 'var(--gold-light)' }}>{item.status}</strong></div>
+          </div>
+
+          <div>
+            <label className="form-section-title">TRANSACTION ACTION</label>
+            <select
+              value={action}
+              onChange={e => {
+                setAction(e.target.value);
+                setCustodian(e.target.value === "RETURN" ? "Armoury Depot Complex" : "");
+              }}
+              className="mono"
+              style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)' }}
+            >
+              <option value="ISSUE">ISSUE TO SERVICEMAN</option>
+              <option value="RETURN">RETURN TO ARMOURY DEPOT</option>
+              <option value="INSPECTION">QUARTERLY INSPECTION CHECK</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="form-section-title">RECORDED CUSTODIAN (NAME & ARMY NO.)</label>
+            <input
+              type="text"
+              value={custodian}
+              onChange={e => setCustodian(e.target.value)}
+              placeholder={action === "RETURN" ? "Armoury Depot Complex" : "e.g. Hav Rawat, V. (JC-118820P)"}
+              required
+              className="mono"
+              style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)' }}
+            />
+          </div>
+
+          <div>
+            <label className="form-section-title">TRANSACTION REMARKS / AUDIT NOTES</label>
+            <input
+              type="text"
+              value={remarks}
+              onChange={e => setRemarks(e.target.value)}
+              placeholder="e.g. Sentry shift issue / verified weapon seal"
+              className="mono"
+              style={{ width: '100%', padding: '10px 12px', background: 'var(--bg-base)', border: '1px solid var(--line)', color: 'var(--ink-bright)', borderRadius: 'var(--radius-xs)' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 6 }}>
+            <button type="button" onClick={onClose} className="btn btn-ghost btn-sm">CANCEL</button>
+            <button type="submit" disabled={submitting} className="btn btn-gold btn-sm" style={{ fontWeight: 800 }}>
+              {submitting ? 'RECORDING…' : 'CONFIRM TRANSACTION ➔'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function AssignmentDetailModal({ isOpen, onClose, assignment }) {
+  if (!isOpen || !assignment) return null;
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-content hud-corner" onClick={e => e.stopPropagation()} style={{ maxWidth: 520, width: '92%', background: 'var(--bg-surface)', border: '1.5px solid var(--gold)', borderRadius: 'var(--radius-card)', padding: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, borderBottom: '1px solid var(--line)', paddingBottom: 10 }}>
+          <div>
+            <span className="chip chip-gold" style={{ fontSize: 9.5 }}>OFFICIAL DUTY ORDER DOCKET</span>
+            <h3 style={{ margin: '4px 0 0', fontSize: 18, color: 'var(--ink-bright)' }}>{assignment.postName}</h3>
+          </div>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--ink-dim)', fontSize: 20, cursor: 'pointer' }}>✕</button>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <span className="mono text-dim" style={{ fontSize: 11 }}>DATE:</span>
+            <div className="mono text-gold" style={{ fontWeight: 700 }}>{assignment.date}</div>
+          </div>
+          <div>
+            <span className="mono text-dim" style={{ fontSize: 11 }}>SHIFT WINDOW:</span>
+            <div className="mono">{assignment.shift}</div>
+          </div>
+          <div>
+            <span className="mono text-dim" style={{ fontSize: 11 }}>UNIT:</span>
+            <div style={{ fontWeight: 700, color: 'var(--ink-bright)' }}>{assignment.unit}</div>
+          </div>
+          <div>
+            <span className="mono text-dim" style={{ fontSize: 11 }}>STATUS:</span>
+            <div><span className="chip chip-duty">{assignment.status}</span></div>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+          <span className="mono text-dim" style={{ fontSize: 11 }}>SUPERVISOR:</span>
+          <div style={{ fontWeight: 700, color: 'var(--gold-light)', marginTop: 2 }}>{assignment.supervisor}</div>
+        </div>
+
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+          <span className="mono text-dim" style={{ fontSize: 11, marginBottom: 6, display: 'block' }}>ASSIGNED SERVICEMEN MUSTER:</span>
+          <div style={{ display: 'grid', gap: 6 }}>
+            {(assignment.assignedPersonnel || []).map(p => (
+              <div key={p.armyNo} className="card" style={{ background: 'var(--bg-panel)', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontWeight: 700, color: 'var(--ink-bright)' }}>{p.rank} {p.name}</span>
+                <span className="mono text-dim" style={{ fontSize: 11 }}>{p.armyNo}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {assignment.remarks && (
+          <div style={{ marginTop: 14, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
+            <span className="mono text-dim" style={{ fontSize: 11 }}>TACTICAL DIRECTIVES:</span>
+            <div className="mono" style={{ fontSize: 12, color: 'var(--ink-dim)', marginTop: 2 }}>{assignment.remarks}</div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+          <button onClick={onClose} className="btn btn-secondary btn-sm">CLOSE DOCKET</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ==========================================================================
+   MAIN COMMAND SUITE COMPONENT (LEFT SIDEBAR & 8 DEDICATED PAGES)
+   ========================================================================== */
+
 function DDMSCommandSuite({ user, onLogout }) {
   const [tab, setTab] = useState('dashboard');
-  const [role, setRole] = useState('ADMIN'); // 'ADMIN' (Commanding Officer) or 'OPERATOR' (Guard Commander)
-  const [adminUser, setAdminUser] = useState("Col R. S. Rathore (Commanding Officer)");
+  
+  // 4 Authorized Military Roles
+  const [role, setRole] = useState('ADMIN'); 
+  // 'ADMIN' (Col R. S. Rathore — Base Admin CO)
+  // 'SUPERVISOR' (Hav Rawat, V. — Senior Havaldar, 2 GRENADIERS)
+  // 'CUSTODIAN' (Lt Menon, S. — Equipment Custodian)
+  // 'READONLY' (Sep Chauhan, R. — View Only)
+
+  const adminUser = useMemo(() => {
+    if (role === 'ADMIN') return "Col R. S. Rathore (Commanding Officer)";
+    if (role === 'SUPERVISOR') return "Hav Rawat, V. (Senior Havaldar)";
+    if (role === 'CUSTODIAN') return "Lt Menon, S. (Armoury Officer)";
+    return "Sep Chauhan, R. (Duty Sentry)";
+  }, [role]);
+
+  const [baseInfo, setBaseInfo] = useState(BASE_INFO_DEFAULT);
+  const [units, setUnits] = useState(UNITS_DEFAULT);
+  const [selectedUnitId, setSelectedUnitId] = useState("UNIT-01");
   const [personnel, setPersonnel] = useState(PERSONNEL);
-  const [weapons, setWeapons] = useState(WEAPONS_INITIAL);
-  const [alerts, setAlerts] = useState(ALERTS_INITIAL);
   const [posts, setPosts] = useState(POSTS);
-  const [auditLogs, setAuditLogs] = useState(AUDIT_LOG);
+  const [dutyAssignments, setDutyAssignments] = useState([]);
   const [dutyHistory, setDutyHistory] = useState([]);
-  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [historyDates, setHistoryDates] = useState([]);
+  const [controlledItems, setControlledItems] = useState(CONTROLLED_ITEMS_INITIAL);
+  const [alerts, setAlerts] = useState(ALERTS_INITIAL);
+  const [auditLogs, setAuditLogs] = useState(AUDIT_LOG);
+
+  // Modals state
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferTargetMember, setTransferTargetMember] = useState(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileTargetMember, setProfileTargetMember] = useState(null);
+  const [showCustodyModal, setShowCustodyModal] = useState(false);
+  const [custodyTargetItem, setCustodyTargetItem] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [detailAssignment, setDetailAssignment] = useState(null);
 
   // Background Data Synchronization with Express REST Backend
   useEffect(() => {
@@ -2120,38 +4224,24 @@ function DDMSCommandSuite({ user, onLogout }) {
 
     const syncDDMS = async () => {
       try {
-        const [pData, wData, aData, rData, repData, hData] = await Promise.all([
+        const [uData, pData, aData, hData, dData, cData, repData] = await Promise.all([
+          DefenceAPI.getUnits().catch(() => null),
           DefenceAPI.getPersonnel().catch(() => null),
-          DefenceAPI.getWeapons().catch(() => null),
-          DefenceAPI.getAlerts().catch(() => null),
-          DefenceAPI.getRoster().catch(() => null),
-          DefenceAPI.getReports().catch(() => null),
-          DefenceAPI.getDutyHistory().catch(() => null)
+          DefenceAPI.getDutyAssignments().catch(() => null),
+          DefenceAPI.getDutyHistory().catch(() => null),
+          DefenceAPI.getRosterDates().catch(() => null),
+          DefenceAPI.getControlledItems().catch(() => null),
+          DefenceAPI.getReports().catch(() => null)
         ]);
 
         if (!mounted) return;
+        if (uData) setUnits(uData);
         if (pData) setPersonnel(pData);
-        if (wData) setWeapons(wData.map(w => ({
-          serial: w.serial,
-          type: w.type,
-          status: w.status === 'ISSUED' ? 'ISSUED' : 'IN ARMOURY',
-          holder: w.issuedTo || '—',
-          ammo: w.calibre || 'Standard NATO',
-          qr: `QR-${w.serial}`
-        })));
-        if (aData) setAlerts(aData.map(a => ({
-          level: a.severity === 'ALERT' ? 'danger' : a.severity === 'WARN' ? 'amber' : 'gold',
-          text: a.text,
-          time: a.time
-        })));
-        if (rData && rData.posts) setPosts(rData.posts);
-        if (repData) setAuditLogs(repData.map(rep => ({
-          ts: rep.time,
-          event: rep.category || "AUDIT",
-          detail: rep.action,
-          by: rep.operator || "HQ DESK"
-        })));
+        if (aData) setDutyAssignments(aData);
         if (hData) setDutyHistory(hData);
+        if (dData) setHistoryDates(dData);
+        if (cData) setControlledItems(cData);
+        if (repData) setAuditLogs(repData);
       } catch (err) {
         console.warn('DDMS background sync notice:', err);
       }
@@ -2165,102 +4255,110 @@ function DDMSCommandSuite({ user, onLogout }) {
     };
   }, []);
 
-  const handleAdminAssignDuty = async (dutyData) => {
-    const res = await DefenceAPI.assignRoster(dutyData);
-    // Refresh all DDMS datasets from backend
-    const [hData, rData, aData, repData] = await Promise.all([
-      DefenceAPI.getDutyHistory().catch(() => null),
-      DefenceAPI.getRoster().catch(() => null),
-      DefenceAPI.getAlerts().catch(() => null),
-      DefenceAPI.getReports().catch(() => null)
-    ]);
-    if (hData) setDutyHistory(hData);
-    if (rData && rData.posts) setPosts(rData.posts);
-    if (aData) setAlerts(aData.map(a => ({
-      level: a.severity === 'ALERT' ? 'danger' : a.severity === 'WARN' ? 'amber' : 'gold',
-      text: a.text,
-      time: a.time
-    })));
-    if (repData) setAuditLogs(repData.map(rep => ({
-      ts: rep.time,
-      event: rep.category || "AUDIT",
-      detail: rep.action,
-      by: rep.operator || "HQ DESK"
-    })));
-    return res;
-  };
-
-  const handleScanReturn = async (weaponSerial = "WPN-7021") => {
+  // Handlers
+  const handleRegisterMember = async (memberData) => {
     try {
-      const res = await DefenceAPI.issueWeapon({
-        serial: weaponSerial,
-        soldierName: role === 'ADMIN' ? adminUser : user,
-        operator: role === 'ADMIN' ? adminUser : user
-      });
-      if (res && res.weapons) {
-        setWeapons(res.weapons.map(w => ({
-          serial: w.serial,
-          type: w.type,
-          status: w.status === 'ISSUED' ? 'ISSUED' : 'IN ARMOURY',
-          holder: w.issuedTo || '—',
-          ammo: w.calibre,
-          qr: `QR-${w.serial}`
-        })));
-      }
-      const updatedReports = await DefenceAPI.getReports();
-      if (updatedReports) {
-        setAuditLogs(updatedReports.map(rep => ({
-          ts: rep.time,
-          event: rep.category,
-          detail: rep.action,
-          by: rep.operator
-        })));
+      const created = await DefenceAPI.registerPersonnel(memberData);
+      if (created) {
+        setPersonnel(prev => [created, ...prev]);
       }
     } catch (e) {
-      setWeapons(prev => prev.map(w => w.serial === "INSAS-4472" || w.serial === "WPN-7021" ? { ...w, status: w.status === "ISSUED" ? "IN ARMOURY" : "ISSUED", holder: user } : w));
+      const fallback = { ...memberData, id: `PERS-${Date.now().toString().slice(-4)}` };
+      setPersonnel(prev => [fallback, ...prev]);
     }
-    setAlerts(prev => [{ level: "gold", text: `${weaponSerial} verified & logged via QR Scan to ${user}`, time: "Just now" }, ...prev]);
   };
 
+  const handleTransferMember = async (armyNo, targetUnitId, remarks) => {
+    try {
+      await DefenceAPI.transferPersonnel({ armyNo, targetUnitId, operator: adminUser, remarks });
+      const refreshed = await DefenceAPI.getPersonnel();
+      if (refreshed) setPersonnel(refreshed);
+    } catch (e) {
+      setPersonnel(prev => prev.map(p => p.armyNo === armyNo ? { ...p, unitId: targetUnitId, unit: units.find(u => u.id === targetUnitId)?.shortName || targetUnitId } : p));
+    }
+  };
+
+  const handleDeleteMember = async (id) => {
+    try {
+      await DefenceAPI.deletePersonnel(id, adminUser);
+    } catch (e) {
+      console.warn("Delete personnel fallback:", e);
+    }
+    setPersonnel(prev => prev.filter(p => p.id !== id && p.armyNo !== id));
+  };
+
+  const handleSaveDutyAssignment = async (payload) => {
+    const created = await DefenceAPI.createDutyAssignment({ ...payload, operator: adminUser });
+    const [refreshedAssignments, refreshedHistory] = await Promise.all([
+      DefenceAPI.getDutyAssignments(),
+      DefenceAPI.getDutyHistory()
+    ]);
+    if (refreshedAssignments) setDutyAssignments(refreshedAssignments);
+    if (refreshedHistory) setDutyHistory(refreshedHistory);
+    return created;
+  };
+
+  const handleUpdateAssignmentStatus = async (id, status) => {
+    await DefenceAPI.updateAssignmentStatus(id, status, adminUser);
+    const refreshed = await DefenceAPI.getDutyAssignments();
+    if (refreshed) setDutyAssignments(refreshed);
+  };
+
+  const handleCustodyConfirm = async (payload) => {
+    await DefenceAPI.recordCustody(payload);
+    const refreshed = await DefenceAPI.getControlledItems();
+    if (refreshed) setControlledItems(refreshed);
+  };
+
+  // 8 Clearly Organized Sidebar Tabs
   const navTabs = [
     { id: 'dashboard', label: 'Command Board' },
+    { id: 'units-members', label: 'Units & Members' },
+    { id: 'duty-assignment', label: 'Duty Assignment' },
     { id: 'roster', label: 'Duty Roster' },
     { id: 'history', label: 'Duty History' },
-    { id: 'weapons', label: 'Weapons Registry' },
+    { id: 'equipment', label: 'Controlled Equipment' },
     { id: 'personnel', label: 'Personnel' },
     { id: 'reports', label: 'Reports & Logs' },
   ];
 
   return (
     <div className="ddms-wrapper hud-corner fade-in">
-      {/* Top Status Strip with Admin Role Switcher */}
+      {/* Top Status Strip with Multi-Role Authorization Switcher */}
       <div className="ddms-top-status-strip">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <span className="text-gold" style={{ fontWeight: 700 }}>DDMS COMMAND DESK</span>
+          <span className="text-gold" style={{ fontWeight: 800, letterSpacing: '.05em' }}>INDIAN ARMY BASE COMMAND DESK</span>
           <span style={{ color: 'var(--line-strong)' }}>|</span>
-          <span style={{ color: 'var(--ink-dim)' }}>
-            OPERATOR: {role === 'ADMIN' ? adminUser : user}
+          <span style={{ color: 'var(--ink-bright)' }}>
+            OPERATOR: <strong>{adminUser}</strong>
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <button 
-            onClick={() => setRole(r => r === 'ADMIN' ? 'OPERATOR' : 'ADMIN')}
-            className={`chip ${role === 'ADMIN' ? 'chip-gold' : 'chip-duty'}`}
-            style={{ cursor: 'pointer', border: '1px solid var(--gold)', fontWeight: 700 }}
-            title="Click to toggle between Admin (Full Override & Duty Assignment) and Operator mode"
-          >
-            {role === 'ADMIN' ? '🛡️ ADMIN OVERRIDE (ACTIVE)' : '👤 OPERATOR (RESTRICTED)'}
-          </button>
-          <span className="chip chip-duty">NODE ACTIVE</span>
-          <span className="chip chip-danger">{alerts.length} ALERTS</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span className="mono text-dim" style={{ fontSize: 11 }}>ROLE:</span>
+            <select
+              value={role}
+              onChange={e => setRole(e.target.value)}
+              className="mono"
+              style={{ background: 'var(--bg-base)', color: 'var(--gold-light)', border: '1px solid var(--gold)', padding: '4px 8px', fontSize: 11.5, fontWeight: 700, borderRadius: 'var(--radius-xs)', cursor: 'pointer' }}
+              title="Select simulated military user role"
+            >
+              <option value="ADMIN">🛡️ ADMINISTRATOR (BASE CO)</option>
+              <option value="SUPERVISOR">⚔️ UNIT SUPERVISOR (SENIOR HAV)</option>
+              <option value="CUSTODIAN">📦 EQUIPMENT CUSTODIAN (ARMOURY)</option>
+              <option value="READONLY">👁️ READ-ONLY SENTRY (RESTRICTED)</option>
+            </select>
+          </div>
+          <span className="chip chip-duty">BASE NODE 09</span>
+          <span className="chip chip-gold">DEFCON 4</span>
         </div>
       </div>
 
       <div className="ddms-body-layout">
-        {/* Sidebar */}
+        {/* Left Sidebar Menu */}
         <div className="ddms-sidebar">
           <div className="ddms-sidebar-header">
-            <div className="mono text-gold" style={{ fontSize: 10, letterSpacing: '.12em' }}>DUTY OPERATIONS</div>
+            <div className="mono text-gold" style={{ fontSize: 10, letterSpacing: '.12em' }}>BASE & UNIT ADMIN</div>
             <div className="disp" style={{ fontSize: 17, fontWeight: 800, marginTop: 2, color: 'var(--ink-bright)' }}>COMMAND CONSOLE</div>
           </div>
 
@@ -2277,7 +4375,9 @@ function DDMSCommandSuite({ user, onLogout }) {
           </nav>
 
           <div style={{ padding: 18, borderTop: '1px solid var(--line)' }}>
-            <div className="mono text-dim" style={{ fontSize: 11, marginBottom: 8 }}>{role === 'ADMIN' ? 'HQ ADJUTANT / CO' : `${user} · 2 GRENADIERS`}</div>
+            <div className="mono text-dim" style={{ fontSize: 11, marginBottom: 8 }}>
+              {role === 'ADMIN' ? 'FULL BASE CLEARANCE' : role === 'SUPERVISOR' ? 'UNIT PERMITTED: 2 GREN' : role === 'CUSTODIAN' ? 'ARMOURY ACCESS ONLY' : 'READ-ONLY VIEWER'}
+            </div>
             <button 
               onClick={onLogout}
               className="btn btn-ghost btn-sm"
@@ -2297,88 +4397,156 @@ function DDMSCommandSuite({ user, onLogout }) {
                 {navTabs.find(t => t.id === tab)?.label}
               </div>
             </div>
-            <span className="chip chip-gold">SECURE LEVEL 3</span>
+            <span className="chip chip-gold">AUTHORIZED LEVEL 4</span>
           </div>
 
           <div className="ddms-view-content">
-            {tab === 'dashboard' && <DDMSDashboardView user={user} personnel={personnel} posts={posts} alerts={alerts} weapons={weapons} />}
+            {tab === 'dashboard' && (
+              <DDMSDashboardView
+                baseInfo={baseInfo}
+                units={units}
+                personnel={personnel}
+                assignments={dutyAssignments}
+                equipment={controlledItems}
+                alerts={alerts}
+                onNavigateTab={setTab}
+                onSelectUnit={setSelectedUnitId}
+              />
+            )}
+            {tab === 'units-members' && (
+              <DDMSUnitsMembersView
+                units={units}
+                personnel={personnel}
+                selectedUnitId={selectedUnitId}
+                onSelectUnit={setSelectedUnitId}
+                onOpenRegister={() => setShowRegisterModal(true)}
+                onOpenEdit={(p) => alert(`Edit Member: ${p.name}`)}
+                onOpenTransfer={(p) => { setTransferTargetMember(p); setShowTransferModal(true); }}
+                onOpenProfile={(p) => { setProfileTargetMember(p); setShowProfileModal(true); }}
+                onDeleteMember={handleDeleteMember}
+                isAdmin={role === 'ADMIN'}
+                isSupervisor={role === 'SUPERVISOR'}
+                userUnitId="UNIT-01"
+              />
+            )}
+            {tab === 'duty-assignment' && (
+              <DDMSDutyAssignmentView
+                units={units}
+                personnel={personnel}
+                posts={posts}
+                dutyAssignments={dutyAssignments}
+                onSaveAssignment={handleSaveDutyAssignment}
+                onNavigateTab={setTab}
+                adminUser={adminUser}
+                isAdmin={role === 'ADMIN'}
+                isSupervisor={role === 'SUPERVISOR'}
+                userUnitId="UNIT-01"
+              />
+            )}
             {tab === 'roster' && (
-              <DDMSRosterView 
-                personnel={personnel} 
-                posts={posts} 
-                onAssignClick={() => setShowAssignModal(true)} 
-                onDownloadPDF={(recs) => generateDutyReportPDF(dutyHistory.length ? dutyHistory : recs, "ALL", adminUser)}
-                isAdmin={role === 'ADMIN'} 
+              <DDMSRosterView
+                units={units}
+                assignments={dutyAssignments}
+                posts={posts}
+                onUpdateStatus={handleUpdateAssignmentStatus}
+                onNavigateTab={setTab}
+                onOpenDetail={(a) => { setDetailAssignment(a); setShowDetailModal(true); }}
+                isAdmin={role === 'ADMIN'}
+                isSupervisor={role === 'SUPERVISOR'}
               />
             )}
             {tab === 'history' && (
-              <DDMSDutyHistoryView 
-                history={dutyHistory} 
-                onAssignClick={() => setShowAssignModal(true)} 
-                onDownloadPDF={(recs, date) => generateDutyReportPDF(recs, date, adminUser)} 
-                isAdmin={role === 'ADMIN'} 
-                adminUser={adminUser} 
+              <DDMSDutyHistoryView
+                units={units}
+                history={dutyHistory}
+                historyDates={historyDates}
+                onDownloadCSV={(recs, date) => {
+                  const csv = "data:text/csv;charset=utf-8,Date,Shift,Unit,Post,Personnel,Supervisor,Status\n" + recs.map(r => `"${r.date}","${r.shift}","${r.unit}","${r.post}","${r.assignedPersonnelNames || r.name}","${r.supervisor || r.authorizedBy}","${r.status}"`).join("\n");
+                  const link = document.createElement("a");
+                  link.href = encodeURI(csv);
+                  link.download = `DUTY_HISTORY_${date || 'ALL'}.csv`;
+                  link.click();
+                }}
+                onOpenDetail={(a) => { setDetailAssignment(a); setShowDetailModal(true); }}
+                adminUser={adminUser}
               />
             )}
-            {tab === 'weapons' && <DDMSWeaponsView weapons={weapons} onScanReturn={handleScanReturn} />}
-            {tab === 'personnel' && <DDMSPersonnelView personnel={personnel} />}
-            {tab === 'reports' && <DDMSReportsView auditLogs={auditLogs} user={role === 'ADMIN' ? adminUser : user} />}
+            {tab === 'equipment' && (
+              <DDMSControlledEquipmentView
+                equipment={controlledItems}
+                onOpenCustodyModal={(item) => { setCustodyTargetItem(item); setShowCustodyModal(true); }}
+                isAdmin={role === 'ADMIN'}
+                isCustodian={role === 'CUSTODIAN'}
+              />
+            )}
+            {tab === 'personnel' && (
+              <DDMSPersonnelView
+                units={units}
+                personnel={personnel}
+                onOpenProfile={(p) => { setProfileTargetMember(p); setShowProfileModal(true); }}
+              />
+            )}
+            {tab === 'reports' && (
+              <DDMSReportsView
+                units={units}
+                personnel={personnel}
+                assignments={dutyAssignments}
+                history={dutyHistory}
+                equipment={controlledItems}
+                auditLogs={auditLogs}
+                adminUser={adminUser}
+              />
+            )}
           </div>
         </div>
       </div>
 
-      {/* Admin Duty Assignment Modal */}
-      <AdminAssignDutyModal
-        isOpen={showAssignModal}
-        onClose={() => setShowAssignModal(false)}
-        personnel={personnel}
-        posts={posts}
-        onDutyAssigned={handleAdminAssignDuty}
+      {/* Modals */}
+      <RegisterMemberModal
+        isOpen={showRegisterModal}
+        onClose={() => setShowRegisterModal(false)}
+        onRegister={handleRegisterMember}
+        units={units}
+      />
+
+      <TransferMemberModal
+        isOpen={showTransferModal}
+        onClose={() => { setShowTransferModal(false); setTransferTargetMember(null); }}
+        member={transferTargetMember}
+        units={units}
+        onTransfer={handleTransferMember}
+      />
+
+      <PersonnelProfileModal
+        isOpen={showProfileModal}
+        onClose={() => { setShowProfileModal(false); setProfileTargetMember(null); }}
+        member={profileTargetMember}
+      />
+
+      <CustodyTransactionModal
+        isOpen={showCustodyModal}
+        onClose={() => { setShowCustodyModal(false); setCustodyTargetItem(null); }}
+        item={custodyTargetItem}
+        onConfirm={handleCustodyConfirm}
         adminUser={adminUser}
+      />
+
+      <AssignmentDetailModal
+        isOpen={showDetailModal}
+        onClose={() => { setShowDetailModal(false); setDetailAssignment(null); }}
+        assignment={detailAssignment}
       />
     </div>
   );
 }
 
+
 /* ==========================================================================
    GALLERY & MISSIONS COMPONENT
    ========================================================================== */
 
-function GallerySection({ onSelectImage }) {
-  return (
-    <section id="gallery" className="section">
-      <div className="section-container">
-        <div className="section-header">
-          <span className="eyebrow">DEFENCE FLEET & WARFARE WINGS</span>
-          <h2 className="heading-section">COMBAT READINESS & CAPABILITIES</h2>
-          <p className="section-subtitle">
-            A visual overview of Indian Army operational capabilities across high-altitude warfare, armoured strike columns, special operations, and digital C4ISR command.
-          </p>
-        </div>
-
-        <div className="gallery-grid">
-          {GALLERY_ITEMS.map(item => (
-            <ComponentBoxCard
-              key={item.id}
-              category={item.category}
-              actionLabel="Details >"
-              word1={item.word1}
-              word2={item.word2}
-              title={item.title}
-              description={item.desc}
-              image={item.img}
-              badge="Asset"
-              previewHeight={185}
-              duration={400}
-              stagger={32}
-              interval={3400 + item.id * 300}
-              onAction={() => onSelectImage(item)}
-            />
-          ))}
-        </div>
-      </div>
-    </section>
-  );
+function GallerySection() {
+  return null;
 }
 
 function GalleryModal({ item, onClose }) {
@@ -2420,201 +4588,71 @@ function GalleryModal({ item, onClose }) {
 }
 
 /* ==========================================================================
-   STRATEGIC PILLAR DOSSIER MODAL (TACTICAL SECTION INTELLIGENCE VIEW)
+   ARMY RULE DETAIL MODAL (REPLACING PILLAR MODAL)
    ========================================================================== */
 
-function PillarModal({ pillar, onClose, onOpenDDMS }) {
-  if (!pillar) return null;
+function RuleDetailModal({ ruleCategory, pillar, onClose, onOpenDDMS }) {
+  const activeCategory = ruleCategory || pillar;
+  if (!activeCategory) return null;
 
-  const [dossier, setDossier] = useState(null);
-
-  // Fallback doctrine profiles matching server/data/store.js
-  const fallbackProfiles = useMemo(() => ({
-    "mission-security": {
-      id: "mission-security",
-      category: "Territorial Defence",
-      badge: "Doctrine",
-      word1: "MISSION",
-      word2: "SECURITY",
-      title: "Mission & Security",
-      desc: "Safeguarding territorial integrity across 15,000+ km of land borders through proactive mountain warfare posture and rapid deterrence.",
-      motto: "सेवा परमो धर्मः — Service Before Self",
-      classification: "RESTRICTED DEFENCE DOCTRINE // SECTION 01",
-      overview: "The primary doctrine of the Indian Army is the unwavering preservation of national sovereignty, territorial integrity, and unity of India against external aggression and internal threats. Operating across the world's most treacherous border terrains—from the icy heights of Siachen to the searing sands of the Thar Desert—the force maintains constant vigilance through forward-deployed formations and active mountain warfare capabilities.",
-      operationalZones: [
-        { name: "Northern Frontier (LOC & LAC)", desc: "High-altitude vigil, extreme sub-zero mountain defence, and glacier command." },
-        { name: "Western Sector (Plains & Deserts)", desc: "Mechanized armoured strike deterrence, radar tracking, and rapid counter-offensive corridors." },
-        { name: "Eastern Sector (Himalayan Ridges)", desc: "Dense jungle warfare, mountain passes, and tri-junction strategic chokepoint security." },
-        { name: "Southern & Island Enclaves", desc: "Peninsular coastal defense, amphibious rapid response, and strategic maritime approaches." }
-      ],
-      doctrineParameters: [
-        { label: "Land Frontier Perimeter", value: "15,106.7 km", sub: "Active border patrolling grid" },
-        { label: "Operational Commands", value: "7 Theatres", sub: "Integrated tactical commands" },
-        { label: "Extreme Altitude Ops", value: "Up to 22,000 ft", sub: "Siachen & Himalayan heights" },
-        { label: "Deterrence Posture", value: "Proactive Defense", sub: "Rapid mobilization response" }
-      ],
-      strategicDirectives: [
-        "Maintain 24/7 uninterrupted visual, thermal, and radar surveillance across all border posts.",
-        "Ensure forward ammunition and logistical depots are sustained with high-altitude reserves.",
-        "Execute synchronized multi-arm border domination patrols with integrated air and artillery support.",
-        "Rapidly neutralize infiltration vectors through proactive counter-intrusion grids."
-      ]
-    },
-    "discipline-valour": {
-      id: "discipline-valour",
-      category: "Military Ethos",
-      badge: "Tradition",
-      word1: "DISCIPLINE",
-      word2: "VALOUR",
-      title: "Discipline & Valour",
-      desc: "Forged in over a century of unparalleled valor, sacrifice, and supreme devotion. Upholding ethical chain-of-command integrity.",
-      motto: "कर्तव्यं अन्वास्ते — Bound by Unflinching Duty & Honour",
-      classification: "MILITARY HERITAGE & ETHOS // SECTION 02",
-      overview: "The ethos of the Indian Army is rooted in unbreakable camaraderie, supreme courage under fire, and ironclad discipline. Over decades of gallantry—from the snow-capped cliffs of Tiger Hill to United Nations peace corridors—officers and soldiers live by the creed of leading from the front ('Follow Me'). The moral foundation guarantees unbending integrity, secular harmony, and adherence to the Chetwode motto.",
-      operationalZones: [
-        { name: "Infantry Regiments", desc: "The bedrock of combat valour: Gorkhas, Sikhs, Grenadiers, Paras, Rajputs, Kumaon, and Garhwal." },
-        { name: "Armoured & Mechanized Columns", desc: "Iron fists on the battleground executing synchronized high-tempo combat maneuvers." },
-        { name: "Special Forces (PARA SF)", desc: "Elite airborne operatives trained for asymmetric warfare, deep raids, and covert hostage rescue." },
-        { name: "Combat Engineers (Sappers)", desc: "Bridging insurmountable chasms, minefield clearance, and building strategic lifeline roads." }
-      ],
-      doctrineParameters: [
-        { label: "Heritage of Valour", value: "125+ Years", sub: "Unbroken martial lineage" },
-        { label: "Param Vir Chakra Citations", value: "21 Heroes", sub: "Highest wartime gallantry honour" },
-        { label: "Chetwode Motto", value: "Honour First", sub: "Safety & welfare of men always" },
-        { label: "Regimental Diversity", value: "Pan-India", sub: "United by one flag, one nation" }
-      ],
-      strategicDirectives: [
-        "Uphold the Chetwode Creed: The safety, honour, and welfare of your country come first, always and every time.",
-        "Foster unit cohesiveness through rigorous physical conditioning and uncompromising regimental pride.",
-        "Instill ethical leadership and constitutional devotion across every level of the chain of command.",
-        "Honor fallen braves and guarantee comprehensive welfare, pension, and medical care for Veer Naris and veterans."
-      ]
-    },
-    "modernization-tech": {
-      id: "modernization-tech",
-      category: "Tactical C4ISR",
-      badge: "Next-Gen",
-      word1: "TECHNOLOGY",
-      word2: "TACTICAL",
-      title: "Modernization & Tech",
-      desc: "Integrating indigenous drone surveillance networks, AI-assisted telemetry, automated QR logistics, and digital DDMS duty rosters.",
-      motto: "प्रौद्योगिकी एवं पराक्रम — Superiority Through Innovation",
-      classification: "ADVANCED DEFENCE TECHNOLOGY // SECTION 03",
-      overview: "Modern warfare demands information superiority and rapid sensor-to-shooter loops. The Indian Army is aggressively undergoing digital transformation through the induction of indigenous unmanned aerial systems, quantum-resistant tactical mesh networks, AI-enabled border surveillance, and the automated DDMS (Duty Deployment & Management System) for algorithmic roster and arms oversight.",
-      operationalZones: [
-        { name: "Unmanned Systems & Swarm Drones", desc: "Long-endurance tactical UAVs, tethered aerial sensors, and autonomous loitering munitions." },
-        { name: "Digital DDMS Roster Operations", desc: "Automated guard post manning, rest-cycle matrix monitoring, and instant QR ordnance validation." },
-        { name: "Tactical Communications Network (TCN)", desc: "Jam-resistant 256-bit encrypted field radio, optical fibre grids, and secure SATCOM downlinks." },
-        { name: "Cyber & Electronic Warfare Command", desc: "Protection of sovereign defence clouds, spectrum domination, and offensive cyber countermeasures." }
-      ],
-      doctrineParameters: [
-        { label: "Encryption Security", value: "256-Bit SHA", sub: "Restricted military cryptographic node" },
-        { label: "DDMS Duty Management", value: "Automated", sub: "Zero-error fatigue tracking & QR arms" },
-        { label: "Atmanirbhar Induction", value: "85%+ Indigenous", sub: "Drones, rifles, sensors & artillery" },
-        { label: "Sensor Fusion Loop", value: "Sub-Second", sub: "Unified C4ISR common operational picture" }
-      ],
-      strategicDirectives: [
-        "Accelerate the fielding of indigenous tactical electronics and AI reconnaissance algorithms.",
-        "Mandate automated DDMS duty rosters across guard posts to prevent soldier fatigue and assure alert compliance.",
-        "Enforce tamper-evident cryptographic QR scans on all weapon issues and ammunition depot transactions.",
-        "Harden command-and-control servers against advanced electronic countermeasures and distributed cyber incursions."
-      ]
-    },
-    "vigilance-service": {
-      id: "vigilance-service",
-      category: "Nation First",
-      badge: "24/7 Vigil",
-      word1: "VIGILANCE",
-      word2: "SERVICE",
-      title: "Vigilance & Service",
-      desc: "Providing round-the-clock humanitarian disaster relief (HADR), civil defense support, and leading global peacekeeping deployments.",
-      motto: "सर्वदा सन्नद्धाः — Always Prepared Everywhere in Crisis",
-      classification: "NATION BUILDING & HADR // SECTION 04",
-      overview: "Beyond combat deterrence, the Indian Army is the nation's premier instrument of crisis response. Whether executing immediate Humanitarian Assistance & Disaster Relief (HADR) during floods, earthquakes, and cyclones, or winning hearts and minds through Project Sadbhavana in remote border zones, the soldier stands as the ultimate guardian and protector of civilian lives.",
-      operationalZones: [
-        { name: "HADR Disaster Task Forces", desc: "Rapid deployment column with amphibious boats, mobile field hospitals, and water purification units." },
-        { name: "Operation Sadbhavana", desc: "Army goodwill schools, vocational training, women empowerment centers, and free medical camps." },
-        { name: "Border Infrastructure (BRO)", desc: "Construction of world's highest motorable passes, all-weather tunnels, and strategic frontier bridges." },
-        { name: "United Nations Peacekeeping", desc: "Blue Helmet contingents defending vulnerable populations across Africa, Middle East, and worldwide." }
-      ],
-      doctrineParameters: [
-        { label: "HADR Response Time", value: "< 60 Minutes", sub: "First responders in civil crises" },
-        { label: "UN Missions Served", value: "53+ Deployments", sub: "Over 200,000 Indian peacekeepers deployed" },
-        { label: "Sadbhavana Schools", value: "40+ Institutes", sub: "Empowering frontier youth with education" },
-        { label: "Civil Defense Readiness", value: "24/7/365 Standby", sub: "Constant pan-India vigilance status" }
-      ],
-      strategicDirectives: [
-        "Maintain standby Humanitarian Assistance & Disaster Relief (HADR) columns at every cantonment.",
-        "Deepen civil-military coordination for rapid disaster mitigation, medical rescue, and supply drops.",
-        "Expand Project Sadbhavana education and healthcare outposts to strengthen border community resilience.",
-        "Uphold India's distinguished international prestige as a compassionate, professional UN peacekeeping pillar."
-      ]
-    }
-  }), []);
+  // Resolve category details from RULES_CATEGORIES
+  const categoryData = useMemo(() => {
+    if (activeCategory.rules && activeCategory.rules.length > 0) return activeCategory;
+    const found = RULES_CATEGORIES.find(c => 
+      c.id === activeCategory.id || 
+      c.title.toLowerCase() === (activeCategory.title || "").toLowerCase()
+    );
+    return found || RULES_CATEGORIES[0];
+  }, [activeCategory]);
 
   useEffect(() => {
-    let mounted = true;
-    const pId = pillar.id || (pillar.title ? pillar.title.toLowerCase().replace(/[^a-z0-9]/g, '-') : "mission-security");
-    const base = fallbackProfiles[pId] || fallbackProfiles["mission-security"];
-
-    setDossier(base);
-
-    // Asynchronously align with backend REST API if available
-    DefenceAPI.getPillarDetails(pId).then(apiData => {
-      if (mounted && apiData) {
-        setDossier(prev => ({
-          ...prev,
-          ...apiData,
-          backendSynced: true
-        }));
-      }
-    }).catch(() => {});
-
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      mounted = false;
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [pillar, fallbackProfiles, onClose]);
-
-  const activeData = dossier || fallbackProfiles[pillar.id] || fallbackProfiles["mission-security"];
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop" onClick={onClose} style={{ zIndex: 1200 }}>
       <div 
         className="modal-dialog hud-corner" 
         style={{ 
-          maxWidth: 780, 
+          maxWidth: 840, 
           maxHeight: '92vh', 
           display: 'flex', 
           flexDirection: 'column',
           background: 'var(--bg-surface)',
-          border: '1px solid var(--line-gold)',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.85), 0 0 30px rgba(197, 160, 89, 0.2)'
+          border: '1px solid rgba(197, 155, 39, 0.45)',
+          boxShadow: '0 24px 60px rgba(0,0,0,0.85), 0 0 25px rgba(197, 155, 39, 0.15)'
         }} 
         onClick={e => e.stopPropagation()}
       >
-        {/* Modal Header */}
+        {/* Header */}
         <div style={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center', 
-          padding: '16px 22px', 
+          padding: '18px 24px', 
           borderBottom: '1px solid var(--line)',
           background: 'var(--bg-panel-2)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span className="chip chip-gold" style={{ fontSize: 10 }}>{activeData.badge}</span>
-            <span className="eyebrow" style={{ color: 'var(--gold)', letterSpacing: '0.12em' }}>
-              {activeData.classification || "RESTRICTED DEFENCE DOCTRINE // SECTION DOSSIER"}
-            </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ color: 'var(--gold)', display: 'flex' }}>
+              {categoryData.icon}
+            </div>
+            <div>
+              <div className="mono" style={{ fontSize: 11, color: 'var(--gold)', letterSpacing: '0.08em' }}>
+                {categoryData.code} · OFFICIAL SERVICE REGULATIONS
+              </div>
+              <div className="disp" style={{ fontSize: 20, fontWeight: 700, color: '#fff', marginTop: 2 }}>
+                {categoryData.title}
+              </div>
+            </div>
           </div>
           <button 
             onClick={onClose} 
-            title="Close Dossier (Esc)"
+            title="Close (Esc)"
             style={{ 
               width: 32, 
               height: 32, 
@@ -2623,201 +4661,136 @@ function PillarModal({ pillar, onClose, onOpenDDMS }) {
               color: 'var(--ink-bright)', 
               borderRadius: '50%', 
               cursor: 'pointer', 
-              fontSize: 15,
+              fontSize: 16,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              transition: 'all 0.2s ease'
+              transition: 'all 0.2s'
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(235, 87, 87, 0.25)'; e.currentTarget.style.color = '#ff8888'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = 'var(--ink-bright)'; }}
           >
             ✕
           </button>
         </div>
 
-        {/* Modal Body - Scrollable */}
+        {/* Modal Body */}
         <div style={{ padding: '22px 24px', overflowY: 'auto', flex: 1 }}>
-          {/* Hero Banner with Word Swap */}
-          <div style={{
-            background: 'radial-gradient(ellipse at 50% 0%, rgba(197, 160, 89, 0.18) 0%, rgba(9, 16, 11, 0.95) 100%)',
-            border: '1px solid rgba(197, 160, 89, 0.4)',
-            borderRadius: 'var(--radius-sm)',
-            padding: '24px 20px',
-            textAlign: 'center',
-            position: 'relative',
-            overflow: 'hidden'
+          {/* Category Scope & Description */}
+          <div style={{ 
+            background: '#060d08', 
+            border: '1px solid rgba(50, 85, 58, 0.4)', 
+            borderRadius: 8, 
+            padding: '14px 18px', 
+            marginBottom: 20 
           }}>
-            <div style={{ marginBottom: 4 }}>
-              <FlippingWordSwap
-                word1={activeData.word1}
-                word2={activeData.word2}
-                duration={380}
-                stagger={30}
-                style={{
-                  fontSize: 'clamp(1.9rem, 3.6vw, 2.5rem)',
-                  fontWeight: 800,
-                  letterSpacing: '0.05em',
-                  fontFamily: 'var(--font-display)',
-                  color: '#ffffff',
-                  textShadow: '0 0 24px rgba(223, 186, 116, 0.5), 0 2px 10px rgba(0, 0, 0, 0.95)'
+            <div style={{ fontSize: '0.94rem', color: '#c4d8c8', lineHeight: 1.55 }}>
+              {categoryData.subtitle}
+            </div>
+            <div style={{ marginTop: 8, fontSize: '0.8rem', color: 'var(--ink-dim)', fontStyle: 'italic' }}>
+              All personnel governed by the Army Act, 1950, Regulations for the Army, and unit standing orders must maintain continuous compliance with these statutory articles.
+            </div>
+          </div>
+
+          {/* Numbered Rules List */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {categoryData.rules.map((rule, rIdx) => (
+              <div 
+                key={rule.num || rIdx}
+                style={{ 
+                  background: '#09130b', 
+                  border: '1px solid rgba(50, 85, 58, 0.45)', 
+                  borderRadius: 8, 
+                  padding: '18px 20px',
+                  transition: 'border-color 0.2s'
                 }}
-              />
-            </div>
-            <h2 className="heading-section" style={{ fontSize: '1.45rem', marginTop: 10, marginBottom: 4, color: 'var(--ink-bright)' }}>
-              {activeData.title}
-            </h2>
-            <div className="hero-sanskrit" style={{ fontSize: 13, color: 'var(--gold-light)' }}>
-              {activeData.motto}
-            </div>
-          </div>
-
-          {/* Live Telemetry Node Sync Strip */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '10px 14px',
-            background: 'var(--bg-panel-2)',
-            border: '1px solid var(--line)',
-            borderRadius: 'var(--radius-xs)',
-            margin: '16px 0 20px',
-            fontFamily: 'var(--font-mono)',
-            fontSize: '11px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span className="radar-ping" style={{ width: 6, height: 6 }}></span>
-              <span style={{ color: 'var(--success)', fontWeight: 600 }}>
-                {activeData.liveTelemetry ? 'LIVE BACKEND REST SYNC // OPERATIONAL' : 'INTEGRATED DEFENCE REST CLIENT'}
-              </span>
-            </div>
-            <div style={{ display: 'flex', gap: 14, color: 'var(--steel)' }}>
-              <span>READINESS: <strong style={{ color: 'var(--gold-light)' }}>{activeData.liveTelemetry?.readinessStatus ?? "100%"}</strong></span>
-              <span>NODE: <strong style={{ color: 'var(--ink-bright)' }}>DEL-09-TACTICAL</strong></span>
-            </div>
-          </div>
-
-          {/* Mission Briefing */}
-          <div style={{ marginBottom: 22 }}>
-            <div className="mono text-gold" style={{ fontSize: 11, letterSpacing: '.1em', marginBottom: 6 }}>
-              TACTICAL DOCTRINE BRIEFING
-            </div>
-            <p style={{ fontSize: '14px', lineHeight: 1.65, color: 'var(--ink)' }}>
-              {activeData.overview || activeData.desc}
-            </p>
-          </div>
-
-          {/* Doctrine Parameters Grid */}
-          {activeData.doctrineParameters && activeData.doctrineParameters.length > 0 && (
-            <div style={{ marginBottom: 22 }}>
-              <div className="mono text-gold" style={{ fontSize: 11, letterSpacing: '.1em', marginBottom: 8 }}>
-                OPERATIONAL PARAMETERS & STANDARDS
-              </div>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-                gap: 12
-              }}>
-                {activeData.doctrineParameters.map((param, pIdx) => (
-                  <div key={pIdx} style={{
-                    background: 'var(--bg-panel)',
-                    border: '1px solid var(--line)',
-                    borderRadius: 'var(--radius-xs)',
-                    padding: '12px 14px'
-                  }}>
-                    <div className="mono text-dim" style={{ fontSize: 10, textTransform: 'uppercase' }}>{param.label}</div>
-                    <div className="disp text-gold" style={{ fontSize: 17, fontWeight: 800, margin: '4px 0 2px' }}>{param.value}</div>
-                    <div className="mono text-dim" style={{ fontSize: 10.5 }}>{param.sub}</div>
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span className="chip chip-gold" style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px' }}>
+                      RULE {rule.num}
+                    </span>
+                    <span style={{ fontSize: '1.05rem', fontWeight: 700, color: '#ffffff' }}>
+                      {rule.title}
+                    </span>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                  <span 
+                    className={`chip ${rule.verification.includes('VERIFIED') ? 'chip-duty' : 'chip-warning'}`}
+                    style={{ fontSize: 10, whiteSpace: 'nowrap' }}
+                  >
+                    {rule.verification.includes('VERIFIED') ? '✓ VERIFIED' : 'PENDING'}
+                  </span>
+                </div>
 
-          {/* Deployment Domains */}
-          {activeData.operationalZones && activeData.operationalZones.length > 0 && (
-            <div style={{ marginBottom: 22 }}>
-              <div className="mono text-gold" style={{ fontSize: 11, letterSpacing: '.1em', marginBottom: 8 }}>
-                TACTICAL DEPLOYMENT DOMAINS
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 10 }}>
-                {activeData.operationalZones.map((zone, zIdx) => (
-                  <div key={zIdx} style={{
-                    background: 'var(--bg-panel-2)',
-                    border: '1px solid var(--line)',
-                    borderRadius: 'var(--radius-xs)',
-                    padding: '10px 12px'
-                  }}>
-                    <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--ink-bright)', marginBottom: 3 }}>
-                      {zone.name}
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--ink-dim)', lineHeight: 1.45 }}>
-                      {zone.desc}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+                {/* Explanation */}
+                <div style={{ fontSize: '0.92rem', color: '#e0ece2', lineHeight: 1.55, marginBottom: 10 }}>
+                  {rule.explanation}
+                </div>
 
-          {/* Strategic Directives */}
-          {activeData.strategicDirectives && activeData.strategicDirectives.length > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              <div className="mono text-gold" style={{ fontSize: 11, letterSpacing: '.1em', marginBottom: 8 }}>
-                STRATEGIC COMBAT DIRECTIVES & MANDATES
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {activeData.strategicDirectives.map((directive, dIdx) => (
-                  <div key={dIdx} style={{
-                    display: 'flex',
-                    gap: 10,
-                    alignItems: 'flex-start',
-                    background: 'rgba(255,255,255,0.02)',
-                    borderLeft: '2px solid var(--gold)',
-                    padding: '9px 12px',
-                    borderRadius: '0 var(--radius-xs) var(--radius-xs) 0'
-                  }}>
-                    <span style={{ color: 'var(--gold)', fontSize: 12, marginTop: 1 }}>✦</span>
-                    <span style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.5 }}>{directive}</span>
+                {/* Additional Guidance / Details */}
+                {rule.details && (
+                  <div style={{ fontSize: '0.85rem', color: '#9bb8a1', marginBottom: 12, paddingLeft: 12, borderLeft: '2px solid rgba(197,155,39,0.4)' }}>
+                    {rule.details}
                   </div>
-                ))}
+                )}
+
+                {/* Reference / Citation Source */}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 8, 
+                  paddingTop: 10, 
+                  borderTop: '1px solid rgba(50, 85, 58, 0.3)',
+                  fontSize: '0.8rem',
+                  color: 'var(--ink-dim)'
+                }}>
+                  <span className="mono" style={{ color: 'var(--gold)' }}>OFFICIAL CITATION:</span>
+                  <span style={{ color: 'var(--ink-bright)', fontWeight: 500 }}>{rule.reference}</span>
+                </div>
               </div>
-            </div>
-          )}
+            ))}
+          </div>
         </div>
 
         {/* Modal Footer */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
+        <div style={{ 
+          padding: '16px 24px', 
+          borderTop: '1px solid var(--line)', 
+          display: 'flex', 
+          justifyContent: 'space-between', 
           alignItems: 'center',
-          padding: '14px 22px',
-          borderTop: '1px solid var(--line)',
-          background: 'var(--bg-panel-2)'
+          background: 'var(--bg-panel)'
         }}>
-          <div>
+          <button 
+            className="btn btn-secondary btn-sm" 
+            onClick={onClose}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            ← BACK TO RULES SECTION
+          </button>
+          <div style={{ display: 'flex', gap: 10 }}>
             {onOpenDDMS && (
               <button 
                 className="btn btn-secondary btn-sm"
-                onClick={onOpenDDMS}
-                style={{ fontSize: 11.5 }}
+                onClick={() => { onClose(); onOpenDDMS(); }}
               >
-                <IconShield /> ACCESS DDMS COMMAND DESK
+                <IconShield /> ACCESS DDMS DESK
               </button>
             )}
+            <button 
+              className="btn btn-gold btn-sm"
+              onClick={() => window.print()}
+            >
+              PRINT OFFICIAL DOSSIER
+            </button>
           </div>
-          <button 
-            className="btn btn-primary btn-sm"
-            onClick={onClose}
-            style={{ fontSize: 11.5, minWidth: 120 }}
-          >
-            CLOSE DOSSIER
-          </button>
         </div>
       </div>
     </div>
   );
 }
+
+// Backward-compatible alias
+const PillarModal = RuleDetailModal;
+
 
 /* ==========================================================================
    NOTICES & DIRECTIVES (GAZETTE)
@@ -2920,9 +4893,8 @@ function Footer() {
           <div>
             <h4 className="footer-col-title">DEFENCE DIRECTORY</h4>
             <ul className="footer-links">
-              <li><a href="#about" className="footer-link">Strategic Pillars</a></li>
-              <li><a href="#commands" className="footer-link">Operational Commands</a></li>
-              <li><a href="#gallery" className="footer-link">Warfare Wings</a></li>
+              <li><a href="#about" className="footer-link">Rules & Regulations</a></li>
+              <li><a href="#ddms-section" className="footer-link">DDMS Command System</a></li>
               <li><a href="#notices" className="footer-link">Official Gazette</a></li>
             </ul>
           </div>

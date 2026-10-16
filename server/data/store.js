@@ -1,497 +1,562 @@
 /**
- * Indian Army DDMS Tactical Data Store
- * In-memory tactical state store with live simulated telemetry
+ * Indian Army Base & Unit Management — Persistent Data Store
+ * File-backed relational JSON store with immediate disk synchronization (db.json)
  */
 
+const fs = require('fs');
+const path = require('path');
 const crypto = require('crypto');
 
-// Initial Personnel Repository
-let personnel = [
-  { armyNo: "JC-118820P", name: "Rawat, V.", rank: "Hav", unit: "2 GRENADIERS", status: "ON DUTY", rest: 0, role: "Guard Commander" },
-  { armyNo: "IC-56231X", name: "Menon, S.", rank: "Lt", unit: "2 GRENADIERS", status: "ON DUTY", rest: 0, role: "Duty Officer" },
-  { armyNo: "JC-224871K", name: "Bhatt, A.", rank: "Nb Sub", unit: "HQ COY", rest: 6, status: "REST", role: "Section Leader" },
-  { armyNo: "NK-994102", name: "Chauhan, R.", rank: "Sep", unit: "HQ COY", rest: 0, status: "AVAILABLE", role: "Rifleman" },
-  { armyNo: "JC-330019L", name: "Yadav, D.", rank: "Nk", unit: "3 PARA", status: "ON DUTY", rest: 0, role: "Specialist" },
-  { armyNo: "NK-771145", name: "Singh, P.", rank: "Sep", unit: "3 PARA", status: "LEAVE", rest: 0, role: "Scout" },
-  { armyNo: "IC-70234R", name: "Kulkarni, N.", rank: "Capt", unit: "HQ COY", status: "AVAILABLE", rest: 0, role: "Adjutant" },
-  { armyNo: "JC-441982", name: "Thapa, B.", rank: "Hav", unit: "2 GRENADIERS", status: "AVAILABLE", rest: 0, role: "Armourer" },
-];
+const DB_PATH = path.join(__dirname, 'db.json');
 
-// Initial Guard Posts
-let posts = [
-  { id: "PST-01", name: "Main Gate", priority: "HIGH", manpower: 2, filled: 2, location: "Sector Alpha Perimeter" },
-  { id: "PST-02", name: "Armoury", priority: "HIGH", manpower: 2, filled: 1, location: "Secure Depot Complex" },
-  { id: "PST-03", name: "Perimeter — North", priority: "MED", manpower: 3, filled: 3, location: "Outer Watchtower Grid" },
-  { id: "PST-04", name: "QRT Standby", priority: "HIGH", manpower: 4, filled: 3, location: "Rapid Response Bay" },
-  { id: "PST-05", name: "Officers' Mess", priority: "LOW", manpower: 1, filled: 1, location: "Administrative Enclave" },
-];
+// In-memory working copy
+let db = {
+  baseInfo: {},
+  units: [],
+  personnel: [],
+  dutyPosts: [],
+  dutyAssignments: [],
+  dutyHistory: [],
+  controlledItems: [],
+  custodyTransactions: [],
+  auditLogs: []
+};
 
-// Master Duty Shifts
-let dutyRoster = [
-  { shift: "0600–1400", post: "Main Gate", personnel: ["JC-118820P Rawat", "NK-994102 Chauhan"], sector: "Sector A" },
-  { shift: "0600–1400", post: "Armoury", personnel: ["IC-56231X Menon"], sector: "Depot B" },
-  { shift: "1400–2200", post: "Perimeter — North", personnel: ["JC-330019L Yadav", "JC-441982 Thapa", "IC-70234R Kulkarni"], sector: "Perimeter N" },
-  { shift: "2200–0600", post: "QRT Standby", personnel: ["JC-118820P Rawat", "JC-330019L Yadav", "JC-441982 Thapa"], sector: "QRT Bay" },
-];
+// Safe load from disk
+function loadDatabase() {
+  try {
+    if (fs.existsSync(DB_PATH)) {
+      const raw = fs.readFileSync(DB_PATH, 'utf-8');
+      db = JSON.parse(raw);
+    } else {
+      saveDatabase();
+    }
+  } catch (err) {
+    console.error('[DB-LOAD-ERROR] Failed to read db.json, retaining memory state:', err.message);
+  }
+}
 
-// Weapons Registry
-let weapons = [
-  { serial: "WPN-7021", type: "INSAS 1B1 5.56mm", calibre: "5.56x45mm", issuedTo: "JC-118820P Hav Rawat", status: "ISSUED", lastCheck: "06:00 IST" },
-  { serial: "WPN-7022", type: "INSAS 1B1 5.56mm", calibre: "5.56x45mm", issuedTo: "None", status: "IN DEPOT", lastCheck: "04:30 IST" },
-  { serial: "WPN-8401", type: "AK-203 7.62mm", calibre: "7.62x39mm", issuedTo: "JC-330019L Nk Yadav", status: "ISSUED", lastCheck: "06:15 IST" },
-  { serial: "WPN-8402", type: "AK-203 7.62mm", calibre: "7.62x39mm", issuedTo: "None", status: "IN DEPOT", lastCheck: "05:00 IST" },
-  { serial: "WPN-9110", type: "Glock 17 9mm", calibre: "9x19mm Parabellum", issuedTo: "IC-56231X Lt Menon", status: "ISSUED", lastCheck: "05:45 IST" },
-  { serial: "WPN-5503", type: "Carl Gustaf M4", calibre: "84mm Rocket", issuedTo: "None", status: "IN DEPOT", lastCheck: "02:00 IST" },
-];
+// Atomic save to disk
+function saveDatabase() {
+  try {
+    fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('[DB-SAVE-ERROR] Failed to save db.json:', err.message);
+  }
+}
 
-// Live Shift Alerts
-let alerts = [
-  { id: "ALT-01", text: "Nb Sub Bhatt, A. rest period ends in 40 min — prepare reassignment to PST-02 relief", time: "16m ago", severity: "WARN" },
-  { id: "ALT-02", text: "Armoury PST-02 understaffed: 1 of 2 filled — immediate assignment required", time: "24m ago", severity: "ALERT" },
-  { id: "ALT-03", text: "6 weapons due for quarterly ordnance & maintenance check", time: "1h ago", severity: "INFO" },
-  { id: "ALT-04", text: "Sector Bravo perimeter communications link verified operational", time: "2h ago", severity: "SUCCESS" },
-];
+// Initial boot load
+loadDatabase();
 
-// Cryptographic Audit Trail
-let auditLogs = [
-  { time: "06:00:12 IST", action: "Morning shift deployed to Main Gate (PST-01)", operator: "Hav Rawat, V.", category: "SHIFT", hash: "8f2a...9c10" },
-  { time: "06:15:45 IST", action: "WPN-8401 issued via tactical QR scan to Nk Yadav, D.", operator: "Lt Menon, S.", category: "WEAPONS", hash: "3e1b...aa41" },
-  { time: "06:30:00 IST", action: "Routine rest rotation started for Section Leader Bhatt, A.", operator: "Capt Kulkarni, N.", category: "PERSONNEL", hash: "7c9d...2201" },
-  { time: "07:00:00 IST", action: "Cryptographic telemetry heartbeat broadcast to HQ Delhi", operator: "SYS-AUTO", category: "TELEMETRY", hash: "11de...04b4" },
-];
+// Cryptographic audit logger
+function logAudit(action, operator = "Col R. S. Rathore", category = "GENERAL") {
+  const hash = crypto.randomBytes(4).toString('hex') + '...' + crypto.randomBytes(4).toString('hex');
+  const entry = {
+    time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' IST',
+    action,
+    operator,
+    category,
+    hash
+  };
+  db.auditLogs.unshift(entry);
+  if (db.auditLogs.length > 50) db.auditLogs.pop();
+  saveDatabase();
+  return entry;
+}
 
-// Historical Duty Roster Ledger ('Who worked on this day and in which post')
-let dutyHistory = [
-  { id: "DH-20260903-01", date: "2026-09-03", shift: "0600–1400", post: "Main Gate (PST-01)", armyNo: "JC-118820P", name: "Rawat, V.", rank: "Hav", unit: "2 GRENADIERS", status: "COMPLETED", authorizedBy: "Col R. S. Rathore (Admin CO)", timeIn: "06:00 IST", timeOut: "14:00 IST" },
-  { id: "DH-20260903-02", date: "2026-09-03", shift: "0600–1400", post: "Main Gate (PST-01)", armyNo: "NK-994102", name: "Chauhan, R.", rank: "Sep", unit: "HQ COY", status: "COMPLETED", authorizedBy: "Col R. S. Rathore (Admin CO)", timeIn: "06:00 IST", timeOut: "14:00 IST" },
-  { id: "DH-20260903-03", date: "2026-09-03", shift: "0600–1400", post: "Armoury (PST-02)", armyNo: "IC-56231X", name: "Menon, S.", rank: "Lt", unit: "2 GRENADIERS", status: "COMPLETED", authorizedBy: "Col R. S. Rathore (Admin CO)", timeIn: "06:00 IST", timeOut: "14:00 IST" },
-  { id: "DH-20260903-04", date: "2026-09-03", shift: "1400–2200", post: "Perimeter — North (PST-03)", armyNo: "JC-330019L", name: "Yadav, D.", rank: "Nk", unit: "3 PARA", status: "ONGOING", authorizedBy: "Col R. S. Rathore (Admin CO)", timeIn: "14:00 IST", timeOut: "Active" },
-  { id: "DH-20260903-05", date: "2026-09-03", shift: "1400–2200", post: "Perimeter — North (PST-03)", armyNo: "JC-441982", name: "Thapa, B.", rank: "Hav", unit: "2 GRENADIERS", status: "ONGOING", authorizedBy: "Col R. S. Rathore (Admin CO)", timeIn: "14:00 IST", timeOut: "Active" },
-  { id: "DH-20260903-06", date: "2026-09-03", shift: "1400–2200", post: "Perimeter — North (PST-03)", armyNo: "IC-70234R", name: "Kulkarni, N.", rank: "Capt", unit: "HQ COY", status: "ONGOING", authorizedBy: "Col R. S. Rathore (Admin CO)", timeIn: "14:00 IST", timeOut: "Active" },
-  { id: "DH-20260902-01", date: "2026-09-02", shift: "0600–1400", post: "QRT Standby (PST-04)", armyNo: "JC-330019L", name: "Yadav, D.", rank: "Nk", unit: "3 PARA", status: "COMPLETED", authorizedBy: "Col R. S. Rathore (Admin CO)", timeIn: "06:00 IST", timeOut: "14:00 IST" },
-  { id: "DH-20260902-02", date: "2026-09-02", shift: "0600–1400", post: "Main Gate (PST-01)", armyNo: "NK-771145", name: "Singh, P.", rank: "Sep", unit: "3 PARA", status: "COMPLETED", authorizedBy: "Col R. S. Rathore (Admin CO)", timeIn: "06:00 IST", timeOut: "14:00 IST" },
-  { id: "DH-20260902-03", date: "2026-09-02", shift: "1400–2200", post: "Armoury (PST-02)", armyNo: "JC-118820P", name: "Rawat, V.", rank: "Hav", unit: "2 GRENADIERS", status: "COMPLETED", authorizedBy: "Col R. S. Rathore (Admin CO)", timeIn: "14:00 IST", timeOut: "22:00 IST" },
-  { id: "DH-20260901-01", date: "2026-09-01", shift: "2200–0600", post: "Perimeter — North (PST-03)", armyNo: "JC-118820P", name: "Rawat, V.", rank: "Hav", unit: "2 GRENADIERS", status: "COMPLETED", authorizedBy: "Col R. S. Rathore (Admin CO)", timeIn: "22:00 IST", timeOut: "06:00 IST" },
-  { id: "DH-20260901-02", date: "2026-09-01", shift: "0600–1400", post: "Officers' Mess (PST-05)", armyNo: "NK-994102", name: "Chauhan, R.", rank: "Sep", unit: "HQ COY", status: "COMPLETED", authorizedBy: "Col R. S. Rathore (Admin CO)", timeIn: "06:00 IST", timeOut: "14:00 IST" },
-];
+// ==========================================
+// 1. BASE & UNIT OPERATIONS
+// ==========================================
 
-// Live telemetry metrics generator
-function getTelemetry() {
-  const now = new Date();
+function getBaseInfo() {
+  return db.baseInfo;
+}
+
+function getUnits() {
+  return db.units.map(u => {
+    const unitMembers = db.personnel.filter(p => p.unitId === u.id || p.unit === u.shortName);
+    const onDuty = unitMembers.filter(p => p.status === 'ON DUTY').length;
+    const available = unitMembers.filter(p => p.status === 'AVAILABLE').length;
+    return {
+      ...u,
+      actualStrength: unitMembers.length,
+      onDutyCount: onDuty,
+      availableCount: available
+    };
+  });
+}
+
+function getUnitById(id) {
+  const unit = db.units.find(u => u.id === id || u.code.toLowerCase() === id.toLowerCase() || u.shortName.toLowerCase() === id.toLowerCase());
+  if (!unit) return null;
+  const unitMembers = db.personnel.filter(p => p.unitId === unit.id || p.unit === unit.shortName);
   
-  // IST Time Formatter
-  const istFormatter = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Kolkata',
-    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-  });
-  const istDateFormatter = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Kolkata',
-    weekday: 'short', month: 'short', day: '2-digit', year: 'numeric'
+  // Rank breakdown
+  const rankCounts = {};
+  unitMembers.forEach(m => {
+    rankCounts[m.rank] = (rankCounts[m.rank] || 0) + 1;
   });
 
-  const istTimeStr = istFormatter.format(now);
-  const istDateStr = istDateFormatter.format(now).toUpperCase();
-
-  // UTC Zulu Formatter
-  const zuluTimeStr = now.toISOString().substring(11, 19) + 'Z';
-
-  // Compute live duty post counts
-  const totalRequired = posts.reduce((sum, p) => sum + p.manpower, 0);
-  const totalFilled = posts.reduce((sum, p) => sum + p.filled, 0);
-
-  // Compute live system pulse
-  const onDutyCount = personnel.filter(p => p.status === 'ON DUTY').length;
-
   return {
-    theatreCommands: 7,
-    theatreCoverage: "Northern to Southern",
-    readinessStatus: "100%",
-    readinessNote: "All Formations Active",
-    postManningRatio: `${totalFilled} / ${totalRequired}`,
-    postManningPercent: Math.round((totalFilled / totalRequired) * 100),
-    postManningNote: "Maintained via DDMS",
-    encryptionProtocol: "256-BIT SHA",
-    encryptionNode: "Restricted Defence Node",
-    defconLevel: "DEFCON 4 NORMAL READY",
-    secureNode: "DEL-09-TACTICAL",
-    istTime: `${istTimeStr} IST`,
-    istDate: istDateStr,
-    zuluTime: zuluTimeStr,
-    activeOnDuty: onDutyCount,
-    serverUptimeSeconds: Math.floor(process.uptime()),
-    status: "OPERATIONAL",
-    timestamp: now.toISOString()
+    ...unit,
+    actualStrength: unitMembers.length,
+    rankBreakdown: rankCounts,
+    members: unitMembers
   };
 }
 
-// Dashboard statistics
-function getDashboardStats() {
-  const onDutyCount = personnel.filter(p => p.status === 'ON DUTY').length;
-  const standbyCount = personnel.filter(p => p.status === 'AVAILABLE').length;
-  const weaponsIssuedCount = weapons.filter(w => w.status === 'ISSUED').length;
+// ==========================================
+// 2. PERSONNEL & UNIT MEMBERS OPERATIONS
+// ==========================================
 
-  return {
-    onDuty: {
-      count: onDutyCount,
-      total: personnel.length,
-      label: "ON DUTY NOW",
-      sub: `of ${personnel.length} soldiers assigned`
-    },
-    standby: {
-      count: standbyCount,
-      label: "STANDBY RESERVE",
-      sub: "Immediate tasking reserve"
-    },
-    weaponsIssued: {
-      count: weaponsIssuedCount,
-      total: weapons.length,
-      label: "WEAPONS ISSUED",
-      sub: `of ${weapons.length} registered weapons`
-    },
-    activeAlerts: {
-      count: alerts.length,
-      label: "ACTIVE ALERTS",
-      sub: "Requires guard officer review"
+function getPersonnel(filters = {}) {
+  let list = [...db.personnel];
+  const { unitId, rank, status, query } = filters;
+
+  if (unitId && unitId !== "ALL") {
+    list = list.filter(p => p.unitId === unitId || p.unit === unitId);
+  }
+  if (rank && rank !== "ALL") {
+    list = list.filter(p => p.rank.toLowerCase() === rank.toLowerCase());
+  }
+  if (status && status !== "ALL") {
+    list = list.filter(p => p.status.toLowerCase() === status.toLowerCase());
+  }
+  if (query) {
+    const q = query.toLowerCase();
+    list = list.filter(p => 
+      (p.name && p.name.toLowerCase().includes(q)) ||
+      (p.armyNo && p.armyNo.toLowerCase().includes(q)) ||
+      (p.designation && p.designation.toLowerCase().includes(q)) ||
+      (p.unit && p.unit.toLowerCase().includes(q))
+    );
+  }
+  return list;
+}
+
+function getPersonnelById(id) {
+  return db.personnel.find(p => p.id === id || p.armyNo === id);
+}
+
+function addPersonnel(data, operator = "Col R. S. Rathore") {
+  const targetUnit = db.units.find(u => u.id === data.unitId || u.shortName === data.unit) || db.units[0];
+  const newMember = {
+    id: `PERS-${Math.floor(100 + Math.random() * 900)}`,
+    armyNo: data.armyNo ? data.armyNo.trim() : `JC-${Math.floor(100000 + Math.random() * 900000)}`,
+    name: data.name ? data.name.trim() : "Soldier",
+    rank: data.rank || "Sep",
+    unitId: targetUnit.id,
+    unit: targetUnit.shortName,
+    designation: data.designation || "Rifleman",
+    status: data.status || "AVAILABLE",
+    restHours: Number(data.restHours) || 0,
+    familyStatus: data.familyStatus || "Single",
+    quarterStatus: data.quarterStatus || "NOT ALLOCATED",
+    quarterNo: data.quarterNo || (data.quarterStatus === "ALLOCATED" ? "QTR-NEW" : "Barracks Living"),
+    joinedDate: data.joinedDate || new Date().toISOString().substring(0, 10),
+    nextTransferDate: data.nextTransferDate || "2027-01-01",
+    phone: data.phone || "—",
+    bloodGroup: data.bloodGroup || "O+ve",
+    remarks: data.remarks || "Personnel enlisted into base register"
+  };
+
+  db.personnel.unshift(newMember);
+  logAudit(`[PERSONNEL REGISTER] Registered ${newMember.rank} ${newMember.name} (${newMember.armyNo}) to ${targetUnit.shortName}`, operator, "PERSONNEL");
+  saveDatabase();
+  return newMember;
+}
+
+function updatePersonnel(id, updates, operator = "Col R. S. Rathore") {
+  const member = db.personnel.find(p => p.id === id || p.armyNo === id);
+  if (!member) return null;
+
+  Object.assign(member, updates);
+  if (updates.unitId) {
+    const u = db.units.find(unit => unit.id === updates.unitId);
+    if (u) member.unit = u.shortName;
+  }
+
+  logAudit(`[PERSONNEL UPDATE] Updated details for ${member.name} (${member.armyNo})`, operator, "PERSONNEL");
+  saveDatabase();
+  return member;
+}
+
+function transferPersonnel(armyNo, targetUnitId, operator = "Col R. S. Rathore", remarks = "") {
+  const member = db.personnel.find(p => p.armyNo === armyNo || p.id === armyNo);
+  if (!member) return { success: false, error: "Member not found" };
+
+  const targetUnit = db.units.find(u => u.id === targetUnitId || u.shortName === targetUnitId);
+  if (!targetUnit) return { success: false, error: "Target unit not found" };
+
+  const oldUnit = member.unit;
+  member.unitId = targetUnit.id;
+  member.unit = targetUnit.shortName;
+  member.joinedDate = new Date().toISOString().substring(0, 10);
+  if (remarks) member.remarks = remarks;
+
+  logAudit(`[UNIT TRANSFER] Transferred ${member.rank} ${member.name} (${member.armyNo}) from ${oldUnit} to ${targetUnit.shortName}`, operator, "UNIT_TRANSFER");
+  saveDatabase();
+  return { success: true, member, oldUnit, newUnit: targetUnit.shortName };
+}
+
+function deletePersonnel(id, operator = "Col R. S. Rathore") {
+  const idx = db.personnel.findIndex(p => p.id === id || p.armyNo === id);
+  if (idx === -1) return false;
+  const removed = db.personnel.splice(idx, 1)[0];
+  logAudit(`[PERSONNEL REMOVAL] Removed member record for ${removed.name} (${removed.armyNo})`, operator, "PERSONNEL");
+  saveDatabase();
+  return removed;
+}
+
+// ==========================================
+// 3. DUTY ASSIGNMENT & ROSTER OPERATIONS
+// ==========================================
+
+function getDutyPosts() {
+  return db.dutyPosts;
+}
+
+function getDutyAssignments(filters = {}) {
+  let list = [...db.dutyAssignments];
+  const { unitId, date, shift, status } = filters;
+  if (unitId && unitId !== "ALL") {
+    list = list.filter(a => a.unitId === unitId || a.unit === unitId);
+  }
+  if (date) {
+    list = list.filter(a => a.date === date);
+  }
+  if (shift && shift !== "ALL") {
+    list = list.filter(a => a.shift === shift);
+  }
+  if (status && status !== "ALL") {
+    list = list.filter(a => a.status === status);
+  }
+  return list;
+}
+
+function createAssignment(payload, operator = "Col R. S. Rathore") {
+  const { unitId, date, shift, postId, supervisor, assignedPersonnel, remarks } = payload;
+  
+  if (!unitId || !date || !shift || !postId || !assignedPersonnel || assignedPersonnel.length === 0) {
+    throw new Error("Missing required duty assignment fields (unit, date, shift, post, personnel).");
+  }
+
+  const post = db.dutyPosts.find(p => p.id === postId) || { name: postId };
+  const unit = db.units.find(u => u.id === unitId || u.shortName === unitId) || { id: unitId, shortName: unitId };
+
+  // Conflict Checking: Check if any assigned soldier is already on active duty for same date & shift
+  const existingForDateShift = db.dutyAssignments.filter(a => a.date === date && a.shift === shift && a.status !== "CANCELLED");
+  const conflicts = [];
+
+  assignedPersonnel.forEach(p => {
+    existingForDateShift.forEach(existing => {
+      if (existing.assignedPersonnel && existing.assignedPersonnel.some(ep => ep.armyNo === p.armyNo)) {
+        conflicts.push(`${p.name} (${p.armyNo}) is already assigned to ${existing.postName} on shift ${shift}`);
+      }
+    });
+  });
+
+  if (conflicts.length > 0) {
+    throw new Error(`Duty Assignment Conflict: ${conflicts.join('; ')}`);
+  }
+
+  const assignment = {
+    id: `ASN-${date.replace(/-/g, '')}-${Math.floor(100 + Math.random() * 900)}`,
+    date,
+    shift,
+    unitId: unit.id,
+    unit: unit.shortName,
+    postId: post.id || postId,
+    postName: post.name,
+    supervisor: supervisor || operator,
+    assignedPersonnel,
+    status: "ACTIVE",
+    remarks: remarks || "Standard duty assignment",
+    createdAt: new Date().toISOString(),
+    createdBy: operator
+  };
+
+  db.dutyAssignments.unshift(assignment);
+
+  // Update soldier status in personnel
+  assignedPersonnel.forEach(p => {
+    const soldier = db.personnel.find(sp => sp.armyNo === p.armyNo);
+    if (soldier) {
+      soldier.status = "ON DUTY";
     }
+  });
+
+  // Also record into permanent Duty History
+  const names = assignedPersonnel.map(p => `${p.rank} ${p.name}`).join(", ");
+  const historyEntry = {
+    id: `DH-${date.replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`,
+    date,
+    shift,
+    unitId: unit.id,
+    unit: unit.shortName,
+    post: post.name,
+    supervisor: supervisor || operator,
+    assignedPersonnelNames: names,
+    status: "ACTIVE",
+    authorizedBy: operator,
+    timeIn: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' IST',
+    timeOut: "Active",
+    remarks: remarks || "Assignment logged"
   };
+  db.dutyHistory.unshift(historyEntry);
+
+  logAudit(`[DUTY ASSIGNED] Assigned ${names} to ${post.name} [Unit: ${unit.shortName}, Shift: ${shift}, Date: ${date}]`, operator, "DUTY");
+  saveDatabase();
+
+  return assignment;
 }
 
-// Manning chart dataset
-function getManningChartData() {
-  return {
-    labels: posts.map(p => p.name),
-    required: posts.map(p => p.manpower),
-    filled: posts.map(p => p.filled),
-    postsDetail: posts
-  };
-}
+function updateAssignmentStatus(id, newStatus, operator = "Col R. S. Rathore") {
+  const assignment = db.dutyAssignments.find(a => a.id === id);
+  if (!assignment) return null;
 
-// Roster operations
-function assignRoster({ shift, post, personnelName, operator = "Col R. S. Rathore (Admin CO)", date, priority = "HIGH" }) {
-  const effectiveDate = date || new Date().toISOString().substring(0, 10);
-  const target = dutyRoster.find(r => r.shift === shift && r.post === post);
-  if (target) {
-    if (!target.personnel.includes(personnelName)) {
-      target.personnel.push(personnelName);
-    }
-  } else {
-    dutyRoster.push({
-      shift,
-      post,
-      personnel: [personnelName],
-      sector: "Sector A"
+  assignment.status = newStatus;
+  if (newStatus === "COMPLETED" || newStatus === "CANCELLED") {
+    assignment.assignedPersonnel.forEach(p => {
+      const soldier = db.personnel.find(sp => sp.armyNo === p.armyNo);
+      if (soldier && soldier.status === "ON DUTY") {
+        soldier.status = "AVAILABLE";
+      }
     });
   }
 
-  // Update corresponding post filled count
-  const pObj = posts.find(p => p.name.toLowerCase().includes(post.toLowerCase()) || post.toLowerCase().includes(p.name.toLowerCase()));
-  if (pObj && pObj.filled < pObj.manpower) {
-    pObj.filled += 1;
-  }
-
-  // Find soldier details
-  const soldier = personnel.find(p => personnelName.includes(p.name) || personnelName.includes(p.armyNo));
-  const armyNo = soldier?.armyNo || personnelName.split(' ')[0] || "JC-TACTICAL";
-  const name = soldier?.name || personnelName;
-  const rank = soldier?.rank || "Hav";
-  const unit = soldier?.unit || "2 GRENADIERS";
-
-  // Add entry to Duty History ledger
-  const historyEntry = {
-    id: `DH-${effectiveDate.replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`,
-    date: effectiveDate,
-    shift,
-    post,
-    armyNo,
-    name,
-    rank,
-    unit,
-    status: "DEPLOYED",
-    timeIn: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' IST',
-    timeOut: "Active",
-    authorizedBy: operator
-  };
-  dutyHistory.unshift(historyEntry);
-
-  // Log in audit trail
-  const hash = crypto.randomBytes(4).toString('hex') + '...' + crypto.randomBytes(4).toString('hex');
-  auditLogs.unshift({
-    time: new Date().toLocaleTimeString('en-GB') + ' IST',
-    action: `[ADMIN ORDER] Assigned ${rank} ${name} (${armyNo}) to ${post} [Shift: ${shift}, Date: ${effectiveDate}]`,
-    operator,
-    category: "ROSTER",
-    hash
-  });
-
-  return {
-    roster: dutyRoster,
-    historyEntry,
-    posts
-  };
+  logAudit(`[DUTY STATUS] Assignment ${id} marked ${newStatus}`, operator, "DUTY");
+  saveDatabase();
+  return assignment;
 }
 
-function getDutyHistory({ date, post, soldier } = {}) {
-  let list = [...dutyHistory];
-  if (date) {
+// ==========================================
+// 4. DUTY HISTORY OPERATIONS
+// ==========================================
+
+function getDutyHistory(filters = {}) {
+  let list = [...db.dutyHistory];
+  const { date, unitId, post, soldier } = filters;
+
+  if (date && date !== "ALL") {
     list = list.filter(item => item.date === date);
+  }
+  if (unitId && unitId !== "ALL") {
+    list = list.filter(item => item.unitId === unitId || item.unit === unitId);
   }
   if (post && post !== "ALL") {
     list = list.filter(item => item.post.toLowerCase().includes(post.toLowerCase()));
   }
   if (soldier) {
     const s = soldier.toLowerCase();
-    list = list.filter(item => item.name.toLowerCase().includes(s) || item.armyNo.toLowerCase().includes(s));
+    list = list.filter(item => 
+      (item.name && item.name.toLowerCase().includes(s)) ||
+      (item.assignedPersonnelNames && item.assignedPersonnelNames.toLowerCase().includes(s)) ||
+      (item.armyNo && item.armyNo.toLowerCase().includes(s))
+    );
   }
   return list;
 }
 
-// Weapons operations (Check-in/Check-out via QR)
-function toggleWeaponIssue(serial, soldierName = "Duty Soldier", operator = "Armoury Guard") {
-  const wpn = weapons.find(w => w.serial.toUpperCase() === serial.toUpperCase());
-  if (!wpn) return null;
+function getDutyHistoryDates() {
+  const set = new Set(db.dutyHistory.map(h => h.date).filter(Boolean));
+  // Include dates from dutyAssignments as well
+  db.dutyAssignments.forEach(a => {
+    if (a.date) set.add(a.date);
+  });
+  return Array.from(set).sort().reverse();
+}
 
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + ' IST';
-  const isCurrentlyIssued = wpn.status === 'ISSUED';
+// ==========================================
+// 5. CONTROLLED EQUIPMENT (INVENTORY & CUSTODY)
+// ==========================================
 
-  if (isCurrentlyIssued) {
-    wpn.status = 'IN DEPOT';
-    wpn.issuedTo = 'None';
-  } else {
-    wpn.status = 'ISSUED';
-    wpn.issuedTo = soldierName;
+function getControlledItems(filters = {}) {
+  let list = [...db.controlledItems];
+  const { category, status, unitId, query } = filters;
+
+  if (category && category !== "ALL") {
+    list = list.filter(i => i.category.toLowerCase() === category.toLowerCase());
   }
-  wpn.lastCheck = timeStr;
-
-  // Add audit log
-  const hash = crypto.randomBytes(4).toString('hex') + '...' + crypto.randomBytes(4).toString('hex');
-  auditLogs.unshift({
-    time: timeStr,
-    action: isCurrentlyIssued ? `WPN ${serial} returned to depot by ${soldierName}` : `WPN ${serial} issued via QR to ${soldierName}`,
-    operator,
-    category: "WEAPONS",
-    hash
-  });
-
-  return wpn;
+  if (status && status !== "ALL") {
+    list = list.filter(i => i.status.toLowerCase() === status.toLowerCase());
+  }
+  if (unitId && unitId !== "ALL") {
+    list = list.filter(i => i.unitId === unitId || i.unit === unitId);
+  }
+  if (query) {
+    const q = query.toLowerCase();
+    list = list.filter(i =>
+      i.name.toLowerCase().includes(q) ||
+      i.serial.toLowerCase().includes(q) ||
+      (i.custodian && i.custodian.toLowerCase().includes(q))
+    );
+  }
+  return list;
 }
 
-// Personnel operations
-function updatePersonnelStatus(armyNo, newStatus, restHours = 0) {
-  const p = personnel.find(item => item.armyNo === armyNo);
-  if (!p) return null;
+function recordCustodyTransaction(payload, operator = "Lt Menon, S.") {
+  const { serial, action, custodian, remarks } = payload;
+  const item = db.controlledItems.find(i => i.serial.toUpperCase() === serial.toUpperCase() || i.id === serial);
+  
+  if (!item) throw new Error(`Controlled item with serial ${serial} not found.`);
 
-  p.status = newStatus;
-  p.rest = restHours;
+  const newStatus = action === "ISSUE" ? "ISSUED" : "IN ARMOURY";
+  const newCustodian = action === "ISSUE" ? (custodian || "Duty Soldier") : "Armoury Depot Complex";
+
+  item.status = newStatus;
+  item.custodian = newCustodian;
+  item.issuingOfficer = operator;
+  if (action === "ISSUE") {
+    item.issuedDate = new Date().toISOString().substring(0, 16).replace('T', ' ') + ' IST';
+  }
 
   const hash = crypto.randomBytes(4).toString('hex') + '...' + crypto.randomBytes(4).toString('hex');
-  auditLogs.unshift({
-    time: new Date().toLocaleTimeString('en-GB') + ' IST',
-    action: `Personnel ${p.rank} ${p.name} status updated to ${newStatus}`,
-    operator: "Hav Rawat, V.",
-    category: "PERSONNEL",
+  const tx = {
+    id: `TX-${Math.floor(1000 + Math.random() * 9000)}`,
+    itemId: item.id,
+    serial: item.serial,
+    action,
+    custodian: newCustodian,
+    officer: operator,
+    timestamp: new Date().toISOString(),
+    remarks: remarks || `Item ${action.toLowerCase()} recorded under authorized supervision`,
     hash
-  });
-
-  return p;
-}
-
-// Add new operational alert
-function addAlert(text, severity = "WARN") {
-  const newAlt = {
-    id: `ALT-0${alerts.length + 1}`,
-    text,
-    time: "Just now",
-    severity
   };
-  alerts.unshift(newAlt);
-  return alerts;
+
+  db.custodyTransactions.unshift(tx);
+  logAudit(`[CONTROLLED ITEM] ${item.serial} (${item.name}) ${action} -> Custodian: ${newCustodian}`, operator, "EQUIPMENT");
+  saveDatabase();
+
+  return { item, transaction: tx };
 }
 
-// Dismiss alert
-function dismissAlert(id) {
-  alerts = alerts.filter(a => a.id !== id);
-  return alerts;
-}
-
-// Strategic Pillars Doctrine Repository & Intelligence Records
-const strategicPillars = [
-  {
-    id: "mission-security",
-    category: "Territorial Defence",
-    badge: "Doctrine",
-    word1: "MISSION",
-    word2: "SECURITY",
-    title: "Mission & Security",
-    desc: "Safeguarding territorial integrity across 15,000+ km of land borders through proactive mountain warfare posture and rapid deterrence.",
-    motto: "सेवा परमो धर्मः — Service Before Self",
-    classification: "RESTRICTED DEFENCE DOCTRINE // SECTION 01",
-    overview: "The primary doctrine of the Indian Army is the unwavering preservation of national sovereignty, territorial integrity, and unity of India against external aggression and internal threats. Operating across the world's most treacherous border terrains—from the icy heights of Siachen to the searing sands of the Thar Desert—the force maintains constant vigilance through forward-deployed formations and active mountain warfare capabilities.",
-    operationalZones: [
-      { name: "Northern Frontier (LOC & LAC)", desc: "High-altitude vigil, extreme sub-zero mountain defence, and glacier command." },
-      { name: "Western Sector (Plains & Deserts)", desc: "Mechanized armoured strike deterrence, radar tracking, and rapid counter-offensive corridors." },
-      { name: "Eastern Sector (Himalayan Ridges)", desc: "Dense jungle warfare, mountain passes, and tri-junction strategic chokepoint security." },
-      { name: "Southern & Island Enclaves", desc: "Peninsular coastal defense, amphibious rapid response, and strategic maritime approaches." }
-    ],
-    doctrineParameters: [
-      { label: "Land Frontier Perimeter", value: "15,106.7 km", sub: "Active border patrolling grid" },
-      { label: "Operational Commands", value: "7 Theatres", sub: "Integrated tactical commands" },
-      { label: "Extreme Altitude Ops", value: "Up to 22,000 ft", sub: "Siachen & Himalayan heights" },
-      { label: "Deterrence Posture", value: "Proactive Defense", sub: "Rapid mobilization response" }
-    ],
-    strategicDirectives: [
-      "Maintain 24/7 uninterrupted visual, thermal, and radar surveillance across all border posts.",
-      "Ensure forward ammunition and logistical depots are sustained with high-altitude reserves.",
-      "Execute synchronized multi-arm border domination patrols with integrated air and artillery support.",
-      "Rapidly neutralize infiltration vectors through proactive counter-intrusion grids."
-    ]
-  },
-  {
-    id: "discipline-valour",
-    category: "Military Ethos",
-    badge: "Tradition",
-    word1: "DISCIPLINE",
-    word2: "VALOUR",
-    title: "Discipline & Valour",
-    desc: "Forged in over a century of unparalleled valor, sacrifice, and supreme devotion. Upholding ethical chain-of-command integrity.",
-    motto: "कर्तव्यं अन्वास्ते — Bound by Unflinching Duty & Honour",
-    classification: "MILITARY HERITAGE & ETHOS // SECTION 02",
-    overview: "The ethos of the Indian Army is rooted in unbreakable camaraderie, supreme courage under fire, and ironclad discipline. Over decades of gallantry—from the snow-capped cliffs of Tiger Hill to United Nations peace corridors—officers and soldiers live by the creed of leading from the front ('Follow Me'). The moral foundation guarantees unbending integrity, secular harmony, and adherence to the Chetwode motto.",
-    operationalZones: [
-      { name: "Infantry Regiments", desc: "The bedrock of combat valour: Gorkhas, Sikhs, Grenadiers, Paras, Rajputs, Kumaon, and Garhwal." },
-      { name: "Armoured & Mechanized Columns", desc: "Iron fists on the battleground executing synchronized high-tempo combat maneuvers." },
-      { name: "Special Forces (PARA SF)", desc: "Elite airborne operatives trained for asymmetric warfare, deep raids, and covert hostage rescue." },
-      { name: "Combat Engineers (Sappers)", desc: "Bridging insurmountable chasms, minefield clearance, and building strategic lifeline roads." }
-    ],
-    doctrineParameters: [
-      { label: "Heritage of Valour", value: "125+ Years", sub: "Unbroken martial lineage" },
-      { label: "Param Vir Chakra Citations", value: "21 Heroes", sub: "Highest wartime gallantry honour" },
-      { label: "Chetwode Motto", value: "Honour First", sub: "Safety & welfare of men always" },
-      { label: "Regimental Diversity", value: "Pan-India", sub: "United by one flag, one nation" }
-    ],
-    strategicDirectives: [
-      "Uphold the Chetwode Creed: The safety, honour, and welfare of your country come first, always and every time.",
-      "Foster unit cohesiveness through rigorous physical conditioning and uncompromising regimental pride.",
-      "Instill ethical leadership and constitutional devotion across every level of the chain of command.",
-      "Honor fallen braves and guarantee comprehensive welfare, pension, and medical care for Veer Naris and veterans."
-    ]
-  },
-  {
-    id: "modernization-tech",
-    category: "Tactical C4ISR",
-    badge: "Next-Gen",
-    word1: "TECHNOLOGY",
-    word2: "TACTICAL",
-    title: "Modernization & Tech",
-    desc: "Integrating indigenous drone surveillance networks, AI-assisted telemetry, automated QR logistics, and digital DDMS duty rosters.",
-    motto: "प्रौद्योगिकी एवं पराक्रम — Superiority Through Innovation",
-    classification: "ADVANCED DEFENCE TECHNOLOGY // SECTION 03",
-    overview: "Modern warfare demands information superiority and rapid sensor-to-shooter loops. The Indian Army is aggressively undergoing digital transformation through the induction of indigenous unmanned aerial systems, quantum-resistant tactical mesh networks, AI-enabled border surveillance, and the automated DDMS (Duty Deployment & Management System) for algorithmic roster and arms oversight.",
-    operationalZones: [
-      { name: "Unmanned Systems & Swarm Drones", desc: "Long-endurance tactical UAVs, tethered aerial sensors, and autonomous loitering munitions." },
-      { name: "Digital DDMS Roster Operations", desc: "Automated guard post manning, rest-cycle matrix monitoring, and instant QR ordnance validation." },
-      { name: "Tactical Communications Network (TCN)", desc: "Jam-resistant 256-bit encrypted field radio, optical fibre grids, and secure SATCOM downlinks." },
-      { name: "Cyber & Electronic Warfare Command", desc: "Protection of sovereign defence clouds, spectrum domination, and offensive cyber countermeasures." }
-    ],
-    doctrineParameters: [
-      { label: "Encryption Security", value: "256-Bit SHA", sub: "Restricted military cryptographic node" },
-      { label: "DDMS Duty Management", value: "Automated", sub: "Zero-error fatigue tracking & QR arms" },
-      { label: "Atmanirbhar Induction", value: "85%+ Indigenous", sub: "Drones, rifles, sensors & artillery" },
-      { label: "Sensor Fusion Loop", value: "Sub-Second", sub: "Unified C4ISR common operational picture" }
-    ],
-    strategicDirectives: [
-      "Accelerate the fielding of indigenous tactical electronics and AI reconnaissance algorithms.",
-      "Mandate automated DDMS duty rosters across guard posts to prevent soldier fatigue and assure alert compliance.",
-      "Enforce tamper-evident cryptographic QR scans on all weapon issues and ammunition depot transactions.",
-      "Harden command-and-control servers against advanced electronic countermeasures and distributed cyber incursions."
-    ]
-  },
-  {
-    id: "vigilance-service",
-    category: "Nation First",
-    badge: "24/7 Vigil",
-    word1: "VIGILANCE",
-    word2: "SERVICE",
-    title: "Vigilance & Service",
-    desc: "Providing round-the-clock humanitarian disaster relief (HADR), civil defense support, and leading global peacekeeping deployments.",
-    motto: "सर्वदा सन्नद्धाः — Always Prepared Everywhere in Crisis",
-    classification: "NATION BUILDING & HADR // SECTION 04",
-    overview: "Beyond combat deterrence, the Indian Army is the nation's premier instrument of crisis response. Whether executing immediate Humanitarian Assistance & Disaster Relief (HADR) during floods, earthquakes, and cyclones, or winning hearts and minds through Project Sadbhavana in remote border zones, the soldier stands as the ultimate guardian and protector of civilian lives.",
-    operationalZones: [
-      { name: "HADR Disaster Task Forces", desc: "Rapid deployment column with amphibious boats, mobile field hospitals, and water purification units." },
-      { name: "Operation Sadbhavana", desc: "Army goodwill schools, vocational training, women empowerment centers, and free medical camps." },
-      { name: "Border Infrastructure (BRO)", desc: "Construction of world's highest motorable passes, all-weather tunnels, and strategic frontier bridges." },
-      { name: "United Nations Peacekeeping", desc: "Blue Helmet contingents defending vulnerable populations across Africa, Middle East, and worldwide." }
-    ],
-    doctrineParameters: [
-      { label: "HADR Response Time", value: "< 60 Minutes", sub: "First responders in civil crises" },
-      { label: "UN Missions Served", value: "53+ Deployments", sub: "Over 200,000 Indian peacekeepers deployed" },
-      { label: "Sadbhavana Schools", value: "40+ Institutes", sub: "Empowering frontier youth with education" },
-      { label: "Civil Defense Readiness", value: "24/7/365 Standby", sub: "Constant pan-India vigilance status" }
-    ],
-    strategicDirectives: [
-      "Maintain standby Humanitarian Assistance & Disaster Relief (HADR) columns at every cantonment.",
-      "Deepen civil-military coordination for rapid disaster mitigation, medical rescue, and supply drops.",
-      "Expand Project Sadbhavana education and healthcare outposts to strengthen border community resilience.",
-      "Uphold India's distinguished international prestige as a compassionate, professional UN peacekeeping pillar."
-    ]
+function getCustodyTransactions(itemId) {
+  if (itemId) {
+    return db.custodyTransactions.filter(t => t.itemId === itemId || t.serial === itemId);
   }
-];
-
-function getStrategicPillars() {
-  const telemetry = getTelemetry();
-  return strategicPillars.map(p => ({
-    id: p.id,
-    category: p.category,
-    badge: p.badge,
-    word1: p.word1,
-    word2: p.word2,
-    title: p.title,
-    desc: p.desc,
-    motto: p.motto,
-    classification: p.classification,
-    liveStatus: {
-      theatreCommands: telemetry.theatreCommands,
-      readinessStatus: telemetry.readinessStatus,
-      encryptionProtocol: telemetry.encryptionProtocol,
-      postManningRatio: telemetry.postManningRatio,
-      status: telemetry.status,
-      timestamp: telemetry.timestamp
-    }
-  }));
+  return db.custodyTransactions;
 }
 
-function getStrategicPillarById(id) {
-  const pillar = strategicPillars.find(p => p.id === id || p.title.toLowerCase().includes(id.toLowerCase()));
-  if (!pillar) return null;
-  const telemetry = getTelemetry();
+// ==========================================
+// 6. DASHBOARD & SUMMARY METRICS
+// ==========================================
+
+function getDashboardStats() {
+  const totalUnits = db.units.length;
+  const totalPersonnel = db.personnel.length;
+  const onDutyCount = db.personnel.filter(p => p.status === 'ON DUTY').length;
+  const availableCount = db.personnel.filter(p => p.status === 'AVAILABLE').length;
+  const restCount = db.personnel.filter(p => p.status === 'REST' || p.status === 'LEAVE').length;
+
+  const todayStr = new Date().toISOString().substring(0, 10);
+  const todayAssignments = db.dutyAssignments.filter(a => a.date === todayStr);
+
+  const weaponsIssued = db.controlledItems.filter(i => i.status === 'ISSUED').length;
+
   return {
-    ...pillar,
-    liveTelemetry: {
-      ...telemetry,
-      alignedAt: new Date().toISOString()
-    }
+    baseInfo: db.baseInfo,
+    unitsCount: totalUnits,
+    personnelCount: totalPersonnel,
+    onDuty: {
+      count: onDutyCount,
+      total: totalPersonnel,
+      label: "ON DUTY NOW",
+      sub: `of ${totalPersonnel} registered servicemen`
+    },
+    standby: {
+      count: availableCount,
+      label: "AVAILABLE STANDBY",
+      sub: "Reserve readiness"
+    },
+    resting: {
+      count: restCount,
+      label: "REST / LEAVE CYCLE",
+      sub: "Fatigue mitigation"
+    },
+    todayAssignmentsCount: todayAssignments.length,
+    controlledEquipmentIssued: weaponsIssued,
+    totalControlledEquipment: db.controlledItems.length,
+    postsMannedRatio: `${db.dutyPosts.length} / ${db.dutyPosts.length} Posts Active`
+  };
+}
+
+function getManningChartData() {
+  const labels = ["0600", "0900", "1200", "1500", "1800", "2100", "0000", "0300"];
+  const onDutyPersonnel = [12, 14, 14, 13, 15, 12, 10, 8];
+  const standbyReserve = [6, 8, 8, 7, 6, 8, 10, 12];
+
+  return {
+    labels,
+    datasets: [
+      {
+        label: "Armed Sentry & Post Manned",
+        data: onDutyPersonnel,
+        borderColor: "#dfba74",
+        backgroundColor: "rgba(223, 186, 116, 0.15)",
+        fill: true,
+        tension: 0.35
+      },
+      {
+        label: "Quick Reaction Standby",
+        data: standbyReserve,
+        borderColor: "#4a7a58",
+        backgroundColor: "rgba(74, 122, 88, 0.12)",
+        fill: true,
+        tension: 0.35
+      }
+    ]
+  };
+}
+
+function getAuditLogs() {
+  return db.auditLogs;
+}
+
+// Retain compatibility helpers for public portal
+function getTelemetry() {
+  const now = new Date();
+  return {
+    theatreCommands: 7,
+    theatreCoverage: "Pan-India Command Grid",
+    readinessStatus: "100%",
+    postManningRatio: `${db.personnel.filter(p => p.status === 'ON DUTY').length} / ${db.dutyPosts.length * 2}`,
+    encryptionProtocol: "256-BIT SHA",
+    defconLevel: "DEFCON 4 NORMAL READY",
+    istTime: `${now.toLocaleTimeString('en-GB')} IST`,
+    istDate: now.toDateString().toUpperCase(),
+    status: "OPERATIONAL",
+    timestamp: now.toISOString()
   };
 }
 
 module.exports = {
-  personnel,
-  posts,
-  dutyRoster,
-  dutyHistory,
-  weapons,
-  alerts,
-  auditLogs,
-  strategicPillars,
-  getTelemetry,
+  db,
+  loadDatabase,
+  saveDatabase,
+  logAudit,
+  getBaseInfo,
+  getUnits,
+  getUnitById,
+  getPersonnel,
+  getPersonnelById,
+  addPersonnel,
+  updatePersonnel,
+  transferPersonnel,
+  deletePersonnel,
+  getDutyPosts,
+  getDutyAssignments,
+  createAssignment,
+  updateAssignmentStatus,
+  getDutyHistory,
+  getDutyHistoryDates,
+  getControlledItems,
+  recordCustodyTransaction,
+  getCustodyTransactions,
   getDashboardStats,
   getManningChartData,
-  assignRoster,
-  getDutyHistory,
-  toggleWeaponIssue,
-  updatePersonnelStatus,
-  addAlert,
-  dismissAlert,
-  getStrategicPillars,
-  getStrategicPillarById
+  getAuditLogs,
+  getTelemetry,
+  // Backward compatibility alias for weapons
+  weapons: db.controlledItems
 };

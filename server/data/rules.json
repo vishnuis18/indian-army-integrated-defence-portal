@@ -1,0 +1,394 @@
+{
+  "system": "INDIAN ARMY BASE & UNIT DDMS — OFFICIAL SERVICE REGULATIONS",
+  "version": "2026.1",
+  "disclaimer": "Illustrative website preview · Rule summaries should be verified against applicable official service regulations and orders.",
+  "updates": [
+    {
+      "id": "upd-01",
+      "citation": "Army Order 04/2026",
+      "title": "Digital & Social Media Operational Security Directives",
+      "published": "15 Jan 2026",
+      "effective": "Immediate",
+      "category": "Security",
+      "status": "OFFICIALLY VERIFIED REGULATION"
+    },
+    {
+      "id": "upd-02",
+      "citation": "Special Army Instruction 18/2025",
+      "title": "Modernized Dress Regulations & Field Utility Standards",
+      "published": "10 Nov 2025",
+      "effective": "01 Dec 2025",
+      "category": "Uniform",
+      "status": "OFFICIALLY VERIFIED REGULATION"
+    },
+    {
+      "id": "upd-03",
+      "citation": "Army Headquarters Directive 102/2025",
+      "title": "Annual Combat Fitness & Medical Evaluation Guidelines",
+      "published": "14 Aug 2025",
+      "effective": "01 Sep 2025",
+      "category": "Safety",
+      "status": "OFFICIALLY VERIFIED REGULATION"
+    },
+    {
+      "id": "upd-04",
+      "citation": "Adjutant General Branch Advisory 09/2025",
+      "title": "Grievance Redressal Mechanism & Transparent Timeline Protocol",
+      "published": "22 May 2025",
+      "effective": "Immediate",
+      "category": "Conduct",
+      "status": "OFFICIALLY VERIFIED REGULATION"
+    }
+  ],
+  "categories": [
+    {
+      "id": "discipline-orders",
+      "code": "01 · DISCIPLINE",
+      "title": "Discipline & Orders",
+      "subtitle": "Maintain discipline, respect the chain of command, and follow lawful orders.",
+      "icon": "shield-check",
+      "previewBullets": [
+        "Following lawful orders promptly and without hesitation",
+        "Respecting established military chain of command",
+        "Military courtesy, salutes and professional discipline",
+        "Personal responsibility, accountability and duty integrity"
+      ],
+      "rules": [
+        {
+          "num": "1.1",
+          "title": "Following Lawful Orders",
+          "explanation": "All military personnel are legally bound to obey all lawful commands issued by their appointed military superiors promptly, respectfully, and without dispute.",
+          "reference": "Army Act, 1950 — Section 41 (Disobedience to superior officer)",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Failure to obey a lawful command given by a superior officer in the execution of his office constitutes a court-martial offence under military law."
+        },
+        {
+          "num": "1.2",
+          "title": "Respecting the Chain of Command",
+          "explanation": "All communications, operational reports, representations, and administrative applications must strictly follow the established line of command through Section, Platoon, and Company commanders.",
+          "reference": "Regulations for the Army (Revised Edition) — Para 421",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Bypassing the chain of command to communicate with higher headquarters or external authorities is strictly prohibited."
+        },
+        {
+          "num": "1.3",
+          "title": "Military Courtesy & Professional Bearing",
+          "explanation": "Proper military compliments, salutes, and formal address by rank must be rendered to all superior officers, commissioned ranks, and national colours at all times.",
+          "reference": "Regulations for the Army — Para 435 (Compliments & Salutes)",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Courtesy reinforces command cohesion and unit morale. Compliments must be exchanged smartly and reciprocated by seniors."
+        },
+        {
+          "num": "1.4",
+          "title": "Personal Responsibility & Accountability",
+          "explanation": "Every serviceman bears direct personal accountability for their conduct, arms, ammunition, and assigned post duties during peace, training, and operational conditions.",
+          "reference": "Army Act, 1950 — General Principles of Military Discipline",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "An individual cannot delegate personal responsibility for vigilance or safety on guard duty."
+        }
+      ]
+    },
+    {
+      "id": "uniform-appearance",
+      "code": "02 · APPEARANCE",
+      "title": "Uniform & Appearance",
+      "subtitle": "Maintain required dress standards, grooming, and military courtesy.",
+      "icon": "uniform",
+      "previewBullets": [
+        "Observance of authorized pattern uniforms and badges of rank",
+        "Strict grooming, haircut, and personal hygiene standards",
+        "Dress regulations in public areas and prohibition of civilian mixing"
+      ],
+      "rules": [
+        {
+          "num": "2.1",
+          "title": "Applicable Uniform Standards",
+          "explanation": "Personnel must wear only authorized pattern combat dress, service dress, or ceremonial uniform with official badges of rank, ribbons, and regimental accoutrements.",
+          "reference": "Dress Regulations for the Army (Revised 2022)",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Non-regulation modifications, unauthorized badges, or altered camouflage patterns are strictly prohibited on duty and parade."
+        },
+        {
+          "num": "2.2",
+          "title": "Grooming & Military Bearing",
+          "explanation": "Haircuts must be neatly trimmed above the collar, beards regulated according to regimental authorization, and personal bearing must reflect military pride.",
+          "reference": "Regulations for the Army — Grooming & Bearing Directives",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Soldiers on active strength must present a clean-shaven or regimentally authorized appearance at morning muster rolls."
+        },
+        {
+          "num": "2.3",
+          "title": "Observing Dress Regulations in Public",
+          "explanation": "Uniform must never be mixed with civilian clothing, worn in disreputable public venues, or worn while travelling without formal authorization orders.",
+          "reference": "Army Orders (Dress & Public Decorum Standards)",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Wearing partial uniform items (e.g. combat jacket with civilian jeans) undermines service dignity and is prohibited."
+        }
+      ]
+    },
+    {
+      "id": "attendance-punctuality",
+      "code": "03 · ATTENDANCE",
+      "title": "Attendance & Punctuality",
+      "subtitle": "Report on time, follow muster roll procedures, and adhere to leave authorizations.",
+      "icon": "clock",
+      "previewBullets": [
+        "Reporting on time for muster rolls, guard mounting, and assigned shifts",
+        "Adherence to duty roster check-in and relief handover procedures",
+        "Understanding authorized leave sanctions and reporting timelines"
+      ],
+      "rules": [
+        {
+          "num": "3.1",
+          "title": "Punctuality & Parade Fall-In",
+          "explanation": "All personnel must report at least 10 minutes prior to scheduled parades, roll calls, and duty shift handovers. Unexplained absence is strictly punishable.",
+          "reference": "Army Act, 1950 — Section 39 (Absence without leave)",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Absence from appointed place of parade or duty without sufficient cause is subject to summary military trial."
+        },
+        {
+          "num": "3.2",
+          "title": "Duty Roster Attendance Protocol",
+          "explanation": "Soldiers assigned to perimeter checkposts, main gate sentry, or QRT standby must remain present at their station until formally relieved by the relief guard.",
+          "reference": "Base Standing Orders — Guard Mounting & Post Manning",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Abandoning a guard post or falling asleep on sentry duty constitutes a severe breach of the Army Act."
+        },
+        {
+          "num": "3.3",
+          "title": "Authorized Leave & Reporting Requirements",
+          "explanation": "Leave must be sanctioned through Part II Orders. Soldiers must report back to their unit before expiry of leave, and immediately report their arrival at the Guard Room.",
+          "reference": "Army Leave Rules & Regulations for the Army Para 472",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Overstaying leave requires immediate communication with the unit Adjutant along with government hospital medical certificates if hospitalized."
+        }
+      ]
+    },
+    {
+      "id": "code-of-conduct",
+      "code": "04 · CONDUCT",
+      "title": "Code of Conduct",
+      "subtitle": "Honesty and integrity, respectful behaviour, and professional conduct on and off duty.",
+      "icon": "scale",
+      "previewBullets": [
+        "Unflinching honesty, moral integrity, and truthful reporting",
+        "Respectful behaviour, dignity, and comradeship across all ranks",
+        "Strict zero tolerance for harassment, ragging, or discrimination",
+        "Exemplary professional conduct on duty and in civilian interactions"
+      ],
+      "rules": [
+        {
+          "num": "4.1",
+          "title": "Honesty & Moral Integrity",
+          "explanation": "Complete truthfulness in official logbooks, reports, and administrative rolls is expected. Falsification of documents is severely penalised under military law.",
+          "reference": "Army Act, 1950 — Section 45 (Unbecoming conduct) & Section 57",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Making false official statements or fraudulent entries in military records undermines base security."
+        },
+        {
+          "num": "4.2",
+          "title": "Respectful Behaviour & Comradeship",
+          "explanation": "Mutual trust, respect, and cohesive camaraderie form the operational foundation of armed combat units. Bullying or derogatory language is unacceptable.",
+          "reference": "Military Ethos & Regimental Code of the Indian Army",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Officers and JCOs must lead by personal example, ensuring welfare and equitable treatment of all personnel under their command."
+        },
+        {
+          "num": "4.3",
+          "title": "Zero Tolerance for Harassment & Discrimination",
+          "explanation": "The Indian Army strictly prohibits any form of ragging, hazing, harassment, or discrimination based on caste, creed, religion, or regional origin.",
+          "reference": "Equal Opportunity & Anti-Ragging Directives (Army HQ)",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Violators are liable to immediate disciplinary action and removal from service."
+        },
+        {
+          "num": "4.4",
+          "title": "Professional Conduct On and Off Duty",
+          "explanation": "Personnel represent the nation and the Indian Army at all times. They must maintain sobriety, avoid public debt disputes, and respect civil laws.",
+          "reference": "Regulations for the Army — Para 428 (Civil Conduct & Decorum)",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Intoxication while on duty or disorderly conduct in civilian areas results in swift court-martial action."
+        }
+      ]
+    },
+    {
+      "id": "confidentiality-security",
+      "code": "05 · SECURITY",
+      "title": "Confidentiality & Security",
+      "subtitle": "Protect sensitive information, credentials, official records, and restricted material.",
+      "icon": "lock",
+      "previewBullets": [
+        "Protection of operational plans, roster records, and classified data",
+        "Securing military portal accounts, login credentials, and digital keys",
+        "Compliance with photography, smartphone, and social media bans",
+        "Immediate counter-intelligence reporting of unauthorized disclosures"
+      ],
+      "rules": [
+        {
+          "num": "5.1",
+          "title": "Protecting Sensitive & Classified Information",
+          "explanation": "Details of military unit dispositions, duty assignments, ammunition holdings, and patrol timings are strictly confidential and must never be discussed with unauthorized persons.",
+          "reference": "Official Secrets Act, 1923 & Army Security Regulations",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Classified documents must be handled strictly on a 'Need to Know' basis and stored in double-locked security safes."
+        },
+        {
+          "num": "5.2",
+          "title": "Digital Accounts & Credential Security",
+          "explanation": "User accounts, passwords, and cryptographic keys used for accessing base command systems and duty portals must never be shared or written in unsecured places.",
+          "reference": "Cyber Security Directives for Armed Forces (CERT-Army)",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Sharing login credentials or inserting unauthorized USB storage media into military workstations is a punishable breach."
+        },
+        {
+          "num": "5.3",
+          "title": "Social Media & Photography Restrictions",
+          "explanation": "Taking photographs inside military installations, posting in uniform on social media, or revealing troop locations online is strictly banned.",
+          "reference": "Army Cyber Security Policy & Social Media Guidelines (Revised)",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Smartphone usage is restricted in operational offices, armouries, and command war rooms."
+        },
+        {
+          "num": "5.4",
+          "title": "Counter-Intelligence Reporting",
+          "explanation": "Any suspicious inquiry, honey-trap approach, or unauthorized request for military information must be reported immediately to the Military Intelligence (MI) cell.",
+          "reference": "Standing Counter-Intelligence Orders",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Failure to report suspected espionage or hostile intelligence overtures constitutes complicity under the Army Act."
+        }
+      ]
+    },
+    {
+      "id": "equipment-property",
+      "code": "06 · PROPERTY",
+      "title": "Equipment & Property",
+      "subtitle": "Responsible use of authorized equipment, custody recordkeeping, and discrepancy reporting.",
+      "icon": "property",
+      "previewBullets": [
+        "Responsible handling of weapons, ammunition, optics, and gear",
+        "Strict compliance with armoury storage and cleaning procedures",
+        "Immediate reporting of damaged, defective, or missing property",
+        "Maintaining continuous and verified custody ledger records"
+      ],
+      "rules": [
+        {
+          "num": "6.1",
+          "title": "Responsible Use of Authorized Equipment",
+          "explanation": "Government-issued weapons, tactical optics, wireless sets, and transport vehicles must be operated strictly for official duty and maintained in combat-ready state.",
+          "reference": "Army Act, 1950 — Section 54 (Deficiency of equipment)",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Negligent loss or damage to government equipment incurs disciplinary action and financial recovery."
+        },
+        {
+          "num": "6.2",
+          "title": "Armoury Storage & Safety Clearing",
+          "explanation": "Firearms must be physically cleared at the safety sand-bucket before entry into the kote/armoury and deposited immediately upon conclusion of the duty shift.",
+          "reference": "Standard Operating Procedures for Unit Armouries (Kote SOP)",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Weapons must be locked in designated unit racks under the joint supervision of the Unit Armourer and Havaldar Major."
+        },
+        {
+          "num": "6.3",
+          "title": "Reporting Missing or Damaged Property",
+          "explanation": "Any defect, cracked optic, weapon malfunction, or missing equipment item must be reported immediately to the Quartermaster for formal recording.",
+          "reference": "Equipment Management Guidelines (EMG)",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Concealing a weapon defect or loss is an offence. Immediate reporting enables formal replacement and technical investigation."
+        },
+        {
+          "num": "6.4",
+          "title": "Accurate Custody Ledger Maintenance",
+          "explanation": "Every weapon issuance, ammunition box draw, and night vision handover must be documented with signatures in physical registers and digital DDMS records.",
+          "reference": "Materiel Management & Ordnance Audit Regulations",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Discrepancies in serial numbers between ledger and physical firearm must be reconciled before daily armoury closing."
+        }
+      ]
+    },
+    {
+      "id": "safety-training",
+      "code": "07 · SAFETY",
+      "title": "Safety & Training",
+      "subtitle": "Approved safety procedures, combat training drills, and health/fitness standards.",
+      "icon": "safety",
+      "previewBullets": [
+        "Adherence to firing range protocols and live ammunition safety",
+        "Mandatory attendance at scheduled tactical refreshers and drills",
+        "Immediate reporting of physical hazards, fire risks, and incidents",
+        "Maintaining requisite SHAPE-1 medical classification and fitness"
+      ],
+      "rules": [
+        {
+          "num": "7.1",
+          "title": "Firing Range & Ammunition Safety",
+          "explanation": "Strict range discipline is compulsory. Weapons must point down-range at all times, with safety catches engaged until the command 'Fire' is given by the Range Officer.",
+          "reference": "Small Arms Safety Manual & Range Standing Orders",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Muzzle awareness and chamber inspection drills must be executed without compromise."
+        },
+        {
+          "num": "7.2",
+          "title": "Mandatory Tactical Training & Drills",
+          "explanation": "Every soldier must regularly undergo Battle Physical Efficiency Tests (BPET), firing classification, and chemical-biological-radiological defense refreshers.",
+          "reference": "Annual Training Directives (Army Training Command - ARTRAC)",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Exemption from training is permitted only on certified medical advice from a Military Hospital Medical Officer."
+        },
+        {
+          "num": "7.3",
+          "title": "Hazard & Incident Reporting",
+          "explanation": "Personnel must immediately flag unsafe ammunition boxes, vehicle brake failures, exposed wiring, or combustible hazards to the Base Safety Officer.",
+          "reference": "Reference pending verification (Occupational Safety SOP)",
+          "verification": "REFERENCE PENDING VERIFICATION",
+          "details": "Unit safety officers conduct periodic risk assessments. Early reporting of near-misses prevents loss of life."
+        },
+        {
+          "num": "7.4",
+          "title": "Medical & Physical Fitness Compliance",
+          "explanation": "All servicemen must maintain prescribed physical conditioning and undergo mandatory annual medical examinations (AME) to ensure SHAPE-1 deployment readiness.",
+          "reference": "Medical Regulations for the Army",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Undisclosed injuries or refusal of medical treatment required for duty readiness is prohibited."
+        }
+      ]
+    },
+    {
+      "id": "reporting-violations",
+      "code": "08 · VIOLATIONS",
+      "title": "Reporting Violations",
+      "subtitle": "Reporting misconduct through authorized channels and escalating safety concerns.",
+      "icon": "flag",
+      "previewBullets": [
+        "Reporting disciplinary infractions through authorized command channels",
+        "Immediate escalation of security breaches and perimeter hazards",
+        "Understanding statutory grievance redressal procedures without fear"
+      ],
+      "rules": [
+        {
+          "num": "8.1",
+          "title": "Reporting Misconduct through Official Channels",
+          "explanation": "Soldiers witnessing serious misconduct, theft of defence equipment, or insubordination must report the facts truthfully to their Subedar Major or Commanding Officer.",
+          "reference": "Army Rules, 1954 — Chapter IV (Investigation of charges)",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Anonymous or malicious false allegations are punishable under military law."
+        },
+        {
+          "num": "8.2",
+          "title": "Escalation of Urgent Security Breaches",
+          "explanation": "Intrusion alerts, perimeter fence breaches, or missing weapons must be reported instantaneously to the Base Duty Officer (BDO) and Guard Commander.",
+          "reference": "Base Counter-Sabotage & Alert Standard Operating Procedures",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "The QRT is dispatched immediately upon broadcast of an alert code."
+        },
+        {
+          "num": "8.3",
+          "title": "Statutory Redress of Grievances",
+          "explanation": "Any serviceman who deems himself wronged by an officer has the statutory right under the Army Act to submit a petition for redress of grievance.",
+          "reference": "Army Act, 1950 — Section 26 & Section 27 (Redress of wrongs)",
+          "verification": "OFFICIALLY VERIFIED REGULATION",
+          "details": "Commanding Officers are legally mandated to investigate and forward petitions without bias or punitive retaliation."
+        }
+      ]
+    }
+  ]
+}
