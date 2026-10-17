@@ -890,7 +890,6 @@ function Navbar({ activeSection, onNavigate, onTogglePortal, portalMode, theme, 
     { id: 'hero', label: 'Home' },
     { id: 'about', label: 'Rules & Regulations' },
     { id: 'ddms', label: 'DDMS Command' },
-    { id: 'notices', label: 'Gazette' },
     { id: 'contact', label: 'Contact' },
   ];
 
@@ -1515,6 +1514,7 @@ const RULES_CATEGORIES = [
 
 function ArmyRulesSection({ onSelectRule, onSelectPillar }) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [showUpdates, setShowUpdates] = useState(false);
 
   const handleSelect = (category) => {
@@ -1522,11 +1522,15 @@ function ArmyRulesSection({ onSelectRule, onSelectPillar }) {
     else if (onSelectPillar) onSelectPillar(category);
   };
 
-  // Filter categories and rules by search keyword
+  // Filter categories and rules by search keyword and category tab
   const filteredCategories = useMemo(() => {
-    if (!searchQuery.trim()) return RULES_CATEGORIES;
+    let list = RULES_CATEGORIES;
+    if (selectedCategory !== "all") {
+      list = list.filter(cat => cat.id === selectedCategory);
+    }
+    if (!searchQuery.trim()) return list;
     const q = searchQuery.toLowerCase().trim();
-    return RULES_CATEGORIES.filter(cat => 
+    return list.filter(cat => 
       cat.title.toLowerCase().includes(q) ||
       cat.subtitle.toLowerCase().includes(q) ||
       cat.code.toLowerCase().includes(q) ||
@@ -1537,15 +1541,15 @@ function ArmyRulesSection({ onSelectRule, onSelectPillar }) {
         r.reference.toLowerCase().includes(q)
       )
     );
-  }, [searchQuery]);
+  }, [searchQuery, selectedCategory]);
 
   return (
     <section id="about" className="section" style={{ position: 'relative', zIndex: 1 }}>
       <div className="section-container rules-container">
         {/* Section Header */}
-        <div className="section-header section-header-center" style={{ marginBottom: 28, textAlign: 'center' }}>
+        <div className="section-header section-header-center" style={{ marginBottom: 24, textAlign: 'center' }}>
           <span className="eyebrow" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--gold)' }}>
-            <span>◆</span> MILITARY CONDUCT & DISCIPLINE
+            <span className="radar-ping-mini"></span> MILITARY CONDUCT & DISCIPLINE
           </span>
           <h2 className="heading-section" style={{ marginTop: 10, marginBottom: 12, fontSize: 'clamp(2rem, 3.8vw, 3rem)' }}>
             ARMY RULES & REGULATIONS
@@ -1553,9 +1557,22 @@ function ArmyRulesSection({ onSelectRule, onSelectPillar }) {
           <p className="section-subtitle" style={{ maxWidth: 760, margin: '0 auto', fontSize: '1.02rem' }}>
             Understand your duties, follow applicable service regulations, maintain discipline, and uphold the highest standards of conduct.
           </p>
+
+          {/* Tactical Metadata Badges */}
+          <div className="rules-header-badge-row">
+            <span className="rules-header-chip">
+              <span style={{ color: 'var(--gold)' }}>◆</span> 8 STATUTORY DOMAINS
+            </span>
+            <span className="rules-header-chip">
+              <span style={{ color: '#3cd070' }}>●</span> 29 BINDING ARTICLES
+            </span>
+            <span className="rules-header-chip">
+              <span style={{ color: 'var(--gold-light)' }}>★</span> ARMY ACT 1950 & SOP
+            </span>
+          </div>
         </div>
 
-        {/* Search Bar */}
+        {/* Search Bar Console */}
         <div className="rules-search-wrapper">
           <div className="rules-search-bar">
             <span className="rules-search-icon">
@@ -1581,10 +1598,32 @@ function ArmyRulesSection({ onSelectRule, onSelectPillar }) {
             )}
           </div>
           {searchQuery && (
-            <div style={{ textAlign: 'center', marginTop: 8, fontSize: '0.82rem', color: 'var(--gold)' }}>
+            <div style={{ textAlign: 'center', marginTop: 8, fontSize: '0.82rem', color: 'var(--gold-light)' }}>
               Found {filteredCategories.length} category matching "{searchQuery}"
             </div>
           )}
+        </div>
+
+        {/* Category Quick Filter Pills */}
+        <div className="rules-filter-pills-row">
+          <button 
+            type="button"
+            className={`rules-filter-pill ${selectedCategory === 'all' ? 'active' : ''}`}
+            onClick={() => setSelectedCategory('all')}
+          >
+            <span>ALL REGULATIONS</span>
+            <span className="filter-pill-count">{RULES_CATEGORIES.length}</span>
+          </button>
+          {RULES_CATEGORIES.map(cat => (
+            <button
+              type="button"
+              key={cat.id}
+              className={`rules-filter-pill ${selectedCategory === cat.id ? 'active' : ''}`}
+              onClick={() => setSelectedCategory(selectedCategory === cat.id ? 'all' : cat.id)}
+            >
+              <span>{cat.code.replace(' · ', ' ')}</span>
+            </button>
+          ))}
         </div>
 
         {/* 8 Category Cards Grid */}
@@ -1598,23 +1637,51 @@ function ArmyRulesSection({ onSelectRule, onSelectPillar }) {
               onClick={() => handleSelect(cat)}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSelect(cat); }}}
             >
-              <div className="rule-card-top">
-                <div className="rule-card-icon">
+              {/* Tactical Header */}
+              <div className="rule-card-header">
+                <div className="rule-card-icon-wrap">
                   {cat.icon}
                 </div>
-                <div className="rule-card-code">{cat.code}</div>
-                <div className="rule-card-title">{cat.title}</div>
-                <div className="rule-card-desc">{cat.subtitle}</div>
-                
+                <div className="rule-card-meta">
+                  <span className="rule-card-code-badge">{cat.code}</span>
+                  <span className="rule-card-count-badge">
+                    <span className="rule-ping-dot"></span>
+                    {cat.rules.length} ARTICLES
+                  </span>
+                </div>
+              </div>
+
+              {/* Title & Subtitle */}
+              <div className="rule-card-body">
+                <h3 className="rule-card-title">{cat.title}</h3>
+                <p className="rule-card-desc">{cat.subtitle}</p>
+
+                {/* Stenciled Divider */}
+                <div className="rule-card-divider">
+                  <span>KEY STATUTORY MANDATES</span>
+                </div>
+
+                {/* Bullets List */}
                 <ul className="rule-card-bullets">
                   {cat.previewBullets.map((bullet, bIdx) => (
-                    <li key={bIdx}>{bullet}</li>
+                    <li key={bIdx} className="rule-bullet-item">
+                      <span className="bullet-chevron">›</span>
+                      <span className="bullet-text">{bullet}</span>
+                    </li>
                   ))}
                 </ul>
               </div>
 
-              <div className="rule-card-action">
-                VIEW RULES ➔
+              {/* Card Footer Action */}
+              <div className="rule-card-footer">
+                <div className="rule-status-indicator">
+                  <span className="status-indicator-dot"></span>
+                  <span>ARMY ACT 1950</span>
+                </div>
+                <div className="rule-card-action">
+                  <span>VIEW RULES</span>
+                  <span className="action-arrow">➔</span>
+                </div>
               </div>
             </div>
           ))}
@@ -1624,8 +1691,8 @@ function ArmyRulesSection({ onSelectRule, onSelectPillar }) {
           <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--ink-dim)' }}>
             <div style={{ fontSize: 24, marginBottom: 8 }}>🔍</div>
             <p>No military regulations matched your search query "{searchQuery}".</p>
-            <button className="btn btn-secondary btn-sm" onClick={() => setSearchQuery("")} style={{ marginTop: 12 }}>
-              Reset Search Filter
+            <button className="btn btn-secondary btn-sm" onClick={() => { setSearchQuery(""); setSelectedCategory("all"); }} style={{ marginTop: 12 }}>
+              Reset Filters
             </button>
           </div>
         )}
@@ -1842,6 +1909,49 @@ function DDMSLogin({ onLogin }) {
 
 
 /* ==========================================================================
+   TACTICAL WORKFLOW PIPELINE (ARMY BASE -> UNITS -> MEMBERS -> ASSIGNMENT -> ROSTER -> HISTORY -> EQUIPMENT -> REPORTS)
+   ========================================================================== */
+
+function DDMSWorkflowPipeline({ activeTab = 'dashboard', onNavigateTab, unitsCount = 4, personnelCount = 12 }) {
+  const steps = [
+    { id: 'dashboard', num: 1, label: 'BASE HQ', tip: 'Step 1: Base Headquarters Command Board' },
+    { id: 'units-members', num: 2, label: `UNITS & MEMBERS (${personnelCount})`, tip: 'Step 2: Base Units Directory & Personnel Registry' },
+    { id: 'duty-assignment', num: 3, label: 'ASSIGN DUTY', tip: 'Step 3: Gazette Guard Post Duty Orders' },
+    { id: 'roster', num: 4, label: 'DUTY ROSTER', tip: 'Step 4: Live Shift Roster & Post Status' },
+    { id: 'history', num: 5, label: 'DUTY HISTORY', tip: 'Step 5: Historical Duty Records & Muster CSV' },
+    { id: 'equipment', num: 6, label: 'CONTROLLED ARMS', tip: 'Step 6: Armoury Custody & Weapon Issuance' },
+    { id: 'reports', num: 7, label: 'REPORTS & LOGS', tip: 'Step 7: Base Daily Muster & Audit Logs' }
+  ];
+
+  return (
+    <div className="ddms-workflow-strip">
+      <div className="workflow-title">
+        <span className="radar-ping-mini"></span>
+        <span>COMMAND WORKFLOW:</span>
+      </div>
+      <div className="workflow-steps">
+        {steps.map((st, i) => {
+          const isActive = activeTab === st.id;
+          return (
+            <React.Fragment key={st.id}>
+              {i > 0 && <span className="workflow-arrow">➔</span>}
+              <div
+                className={`workflow-step ${isActive ? 'active' : ''}`}
+                onClick={() => onNavigateTab && onNavigateTab(st.id)}
+                title={st.tip}
+              >
+                <span className="step-num">{st.num}</span>
+                <span className="step-text">{st.label}</span>
+              </div>
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ==========================================================================
    PAGE 1: COMMAND BOARD (ARMY BASE & UNIT SUMMARY)
    ========================================================================== */
 
@@ -1922,198 +2032,255 @@ function DDMSDashboardView({ baseInfo, units = [], personnel = [], assignments =
   }, [units, personnel]);
 
   return (
-    <div className="fade-in" style={{ display: 'grid', gap: 22 }}>
-      {/* Base Commander Summary Banner */}
-      <div className="card hud-corner" style={{ background: 'linear-gradient(135deg, #0e1e13 0%, #08120b 100%)', border: '1.5px solid var(--gold-dark)', padding: '20px 24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 14 }}>
-          <div>
-            <div className="chip chip-gold" style={{ fontSize: 10, marginBottom: 6 }}>ARMY BASE COMMAND HEADQUARTERS</div>
-            <h2 className="disp" style={{ fontSize: 24, fontWeight: 900, color: 'var(--ink-bright)', margin: 0 }}>
-              {baseInfo?.name || "Northern Cantonment Base // Sector Alpha"}
-            </h2>
-            <div className="mono text-dim" style={{ fontSize: 12, marginTop: 4 }}>
-              COMMANDING OFFICER: <strong style={{ color: 'var(--gold-light)' }}>{baseInfo?.commandingOfficer || "Col R. S. Rathore"}</strong> · {baseInfo?.command || "Northern Command"}
+    <div className="fade-in" style={{ display: 'grid', gap: 20 }}>
+      {/* 1. Base Commander Summary Banner */}
+      <div className="card hud-corner" style={{ background: 'linear-gradient(135deg, rgba(14, 30, 19, 0.95) 0%, rgba(8, 18, 11, 0.98) 100%)', border: '1.5px solid var(--gold)', padding: '22px 26px', boxShadow: '0 8px 28px rgba(0,0,0,0.5)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ width: 44, height: 44, flexShrink: 0, padding: 4, background: 'rgba(197, 160, 89, 0.1)', border: '1px solid rgba(197, 160, 89, 0.35)', borderRadius: '50%' }}>
+              <ArmyEmblemSvg />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span className="chip chip-gold" style={{ fontSize: 9.5, padding: '2px 8px' }}>ARMY BASE COMMAND HEADQUARTERS</span>
+                <span className="chip" style={{ background: 'rgba(54, 92, 64, 0.35)', color: '#a2deb3', border: '1px solid rgba(54, 92, 64, 0.5)', fontSize: 9.5 }}>SECURE NODE: DEL-09-HQ</span>
+              </div>
+              <h2 className="disp" style={{ fontSize: 24, fontWeight: 900, color: '#ffffff', margin: 0, letterSpacing: '-0.01em' }}>
+                {baseInfo?.name || "Northern Cantonment Base // Sector Alpha"}
+              </h2>
+              <div className="mono text-dim" style={{ fontSize: 12, marginTop: 4 }}>
+                COMMANDING OFFICER: <strong style={{ color: 'var(--gold-light)' }}>{baseInfo?.commandingOfficer || "Col R. S. Rathore"}</strong> · {baseInfo?.command || "Northern Command"}
+              </div>
             </div>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <span className="chip chip-duty" style={{ fontWeight: 700, fontSize: 11 }}>🟢 BASE STATUS: OPERATIONAL</span>
-            <div className="mono text-dim" style={{ fontSize: 11, marginTop: 6 }}>RESTRICTED DEFENCE NODE // DEFCON 4</div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+            <span className="chip chip-duty" style={{ fontWeight: 700, fontSize: 11, padding: '4px 10px' }}>
+              <span className="radar-ping-mini"></span> BASE STATUS: OPERATIONAL
+            </span>
+            <div className="mono text-dim" style={{ fontSize: 11 }}>RESTRICTED DEFENCE NODE // DEFCON 4 READY</div>
           </div>
         </div>
       </div>
 
-      {/* 6 Key Performance Metric Tiles */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
-        <div className="card hud-corner" style={{ background: 'var(--bg-panel-2)', padding: '16px' }}>
-          <div className="mono text-dim" style={{ fontSize: 10, letterSpacing: '.1em' }}>TOTAL BASE UNITS</div>
-          <div className="disp" style={{ fontSize: 26, fontWeight: 900, color: 'var(--gold-light)', marginTop: 4 }}>
-            {units.length} UNITS
+      {/* 2. Key Performance Metric Tiles (Structured 6-Column Grid) */}
+      <div className="ddms-kpi-grid">
+        <div className="ddms-kpi-tile hud-corner">
+          <div className="kpi-stripe gold"></div>
+          <div className="kpi-label">TOTAL BASE UNITS</div>
+          <div className="kpi-value text-gold">
+            {units.length} <span className="kpi-unit">UNITS</span>
           </div>
-          <div className="mono text-dim" style={{ fontSize: 11, marginTop: 2 }}>Battalions & HQ Coy</div>
+          <div className="kpi-sub">Battalions & HQ Coy</div>
         </div>
-        <div className="card hud-corner" style={{ background: 'var(--bg-panel-2)', padding: '16px' }}>
-          <div className="mono text-dim" style={{ fontSize: 10, letterSpacing: '.1em' }}>TOTAL SERVICEMEN</div>
-          <div className="disp" style={{ fontSize: 26, fontWeight: 900, color: 'var(--ink-bright)', marginTop: 4 }}>
-            {personnel.length} MEMBERS
+        <div className="ddms-kpi-tile hud-corner">
+          <div className="kpi-stripe white"></div>
+          <div className="kpi-label">TOTAL ENROLMENT</div>
+          <div className="kpi-value">
+            {personnel.length} <span className="kpi-unit">MEMBERS</span>
           </div>
-          <div className="mono text-dim" style={{ fontSize: 11, marginTop: 2 }}>Base registered strength</div>
+          <div className="kpi-sub">Base registered strength</div>
         </div>
-        <div className="card hud-corner" style={{ background: 'var(--bg-panel-2)', padding: '16px' }}>
-          <div className="mono text-dim" style={{ fontSize: 10, letterSpacing: '.1em' }}>ON DUTY NOW</div>
-          <div className="disp" style={{ fontSize: 26, fontWeight: 900, color: '#4ade80', marginTop: 4 }}>
-            {onDutyCount} ACTIVE
+        <div className="ddms-kpi-tile hud-corner">
+          <div className="kpi-stripe green"></div>
+          <div className="kpi-label">ON DUTY NOW</div>
+          <div className="kpi-value text-green">
+            {onDutyCount} <span className="kpi-unit">ACTIVE</span>
           </div>
-          <div className="mono text-dim" style={{ fontSize: 11, marginTop: 2 }}>Across all guard posts</div>
+          <div className="kpi-sub">Across all guard posts</div>
         </div>
-        <div className="card hud-corner" style={{ background: 'var(--bg-panel-2)', padding: '16px' }}>
-          <div className="mono text-dim" style={{ fontSize: 10, letterSpacing: '.1em' }}>STANDBY RESERVE</div>
-          <div className="disp" style={{ fontSize: 26, fontWeight: 900, color: 'var(--steel)', marginTop: 4 }}>
-            {availableCount} READY
+        <div className="ddms-kpi-tile hud-corner">
+          <div className="kpi-stripe steel"></div>
+          <div className="kpi-label">STANDBY RESERVE</div>
+          <div className="kpi-value text-steel">
+            {availableCount} <span className="kpi-unit">READY</span>
           </div>
-          <div className="mono text-dim" style={{ fontSize: 11, marginTop: 2 }}>Immediate tasking reserve</div>
+          <div className="kpi-sub">Immediate tasking reserve</div>
         </div>
-        <div className="card hud-corner" style={{ background: 'var(--bg-panel-2)', padding: '16px' }}>
-          <div className="mono text-dim" style={{ fontSize: 10, letterSpacing: '.1em' }}>REST / LEAVE CYCLE</div>
-          <div className="disp" style={{ fontSize: 26, fontWeight: 900, color: 'var(--amber)', marginTop: 4 }}>
-            {restCount} SERVICEMEN
+        <div className="ddms-kpi-tile hud-corner">
+          <div className="kpi-stripe amber"></div>
+          <div className="kpi-label">REST / LEAVE CYCLE</div>
+          <div className="kpi-value text-amber">
+            {restCount} <span className="kpi-unit">SERVICEMEN</span>
           </div>
-          <div className="mono text-dim" style={{ fontSize: 11, marginTop: 2 }}>Fatigue compliance rules</div>
+          <div className="kpi-sub">Fatigue compliance rules</div>
         </div>
-        <div className="card hud-corner" style={{ background: 'var(--bg-panel-2)', padding: '16px' }}>
-          <div className="mono text-dim" style={{ fontSize: 10, letterSpacing: '.1em' }}>CONTROLLED ARMS ISSUED</div>
-          <div className="disp" style={{ fontSize: 26, fontWeight: 900, color: 'var(--gold-light)', marginTop: 4 }}>
-            {issuedEquipmentCount} OF {equipment.length}
+        <div className="ddms-kpi-tile hud-corner">
+          <div className="kpi-stripe gold"></div>
+          <div className="kpi-label">CONTROLLED ARMS ISSUED</div>
+          <div className="kpi-value text-gold">
+            {issuedEquipmentCount} <span className="kpi-unit">OF {equipment.length}</span>
           </div>
-          <div className="mono text-dim" style={{ fontSize: 11, marginTop: 2 }}>Armoury custody audit</div>
+          <div className="kpi-sub">Armoury custody audit</div>
         </div>
       </div>
 
-      {/* Unit Summary Selector & Breakdown */}
-      <Panel
-        title="Base Units Directory & Personnel Breakdown"
-        eyebrow="Base Units Structure // Select Unit for Live Overview"
-        right={
-          <button 
-            onClick={() => onNavigateTab('units-members')} 
-            className="btn btn-secondary btn-sm"
-          >
-            MANAGE UNIT MEMBERS ➔
-          </button>
-        }
-      >
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 18 }}>
-          {units.map(u => {
-            const isSelected = u.id === selectedUnitId;
-            const strength = personnel.filter(p => p.unitId === u.id || p.unit === u.shortName).length;
-            const pct = Math.round((strength / (u.authorizedStrength || 40)) * 100);
+      {/* 3. Base Units Directory & Live Selection Dossier */}
+      <div id="unit-directory-panel">
+        <Panel
+          title="Base Units Directory & Personnel Breakdown"
+          eyebrow="Army Base Structure // Select Unit for Live Roster & Actions"
+          right={
+            <button 
+              onClick={() => onNavigateTab('units-members')} 
+              className="btn btn-secondary btn-sm"
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <span>MANAGE UNIT MEMBERS</span>
+              <span>➔</span>
+            </button>
+          }
+        >
+          <div className="unit-grid-4">
+            {units.map(u => {
+              const isSelected = u.id === selectedUnitId;
+              const strength = personnel.filter(p => p.unitId === u.id || p.unit === u.shortName).length;
+              const pct = Math.round((strength / (u.authorizedStrength || 40)) * 100);
 
-            return (
-              <div 
-                key={u.id}
-                onClick={() => setSelectedUnitId(u.id)}
-                className={`unit-card ${isSelected ? 'active' : ''}`}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span className="mono text-gold" style={{ fontSize: 11, fontWeight: 700 }}>{u.code}</span>
-                  <span className="chip chip-gold" style={{ fontSize: 9.5 }}>{u.sector ? u.sector.split(' ')[0] : 'SECTOR'}</span>
-                </div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--ink-bright)', marginTop: 6 }}>
-                  {u.shortName || u.name}
-                </div>
-                <div className="mono text-dim" style={{ fontSize: 11, marginTop: 4 }}>
-                  Officer: {u.seniorOfficer ? u.seniorOfficer.split(' ')[0] + ' ' + (u.seniorOfficer.split(' ')[1] || '') : 'CO'}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginTop: 10 }}>
-                  <span className="mono text-dim">Strength:</span>
-                  <span className="mono text-gold" style={{ fontWeight: 600 }}>{strength} / {u.authorizedStrength || 40} ({pct}%)</span>
-                </div>
-                <div className="progress-bar-bg">
-                  <div className="progress-bar-fill" style={{ width: `${Math.min(pct, 100)}%` }}></div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Selected Unit Deep-Dive Box */}
-        {selectedUnit && (
-          <div className="card hud-corner" style={{ background: 'var(--bg-panel)', border: '1px solid var(--line-strong)', padding: '18px 22px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, borderBottom: '1px solid var(--line)', paddingBottom: 14 }}>
-              <div>
-                <span className="chip chip-gold" style={{ fontSize: 10, marginBottom: 4 }}>{selectedUnit.code} · UNIT OVERVIEW</span>
-                <h3 style={{ margin: '4px 0 0', fontSize: 18, color: 'var(--ink-bright)', fontFamily: 'var(--font-display)' }}>
-                  {selectedUnit.name} ({selectedUnit.shortName})
-                </h3>
-                <div className="mono text-gold" style={{ fontSize: 12, marginTop: 2, fontStyle: 'italic' }}>
-                  "{selectedUnit.motto}"
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button 
-                  onClick={() => {
-                    onSelectUnit(selectedUnit.id);
-                    onNavigateTab('units-members');
-                  }}
-                  className="btn btn-gold btn-sm"
+              return (
+                <div 
+                  key={u.id}
+                  onClick={() => setSelectedUnitId(u.id)}
+                  className={`unit-card ${isSelected ? 'active' : ''}`}
                 >
-                  VIEW {selectedUnit.shortName} MEMBERS ➔
-                </button>
-                <button 
-                  onClick={() => onNavigateTab('duty-assignment')} 
-                  className="btn btn-secondary btn-sm"
-                >
-                  ASSIGN DUTY ➔
-                </button>
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginTop: 14 }}>
-              <div>
-                <div className="mono text-dim" style={{ fontSize: 11 }}>SENIOR OFFICER (COMMAND):</div>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink-bright)', marginTop: 2 }}>{selectedUnit.seniorOfficer || "Col R. S. Rathore"}</div>
-              </div>
-              <div>
-                <div className="mono text-dim" style={{ fontSize: 11 }}>SENIOR SUPERVISOR (ROSTER):</div>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gold-light)', marginTop: 2 }}>{selectedUnit.seniorSupervisor || "Hav Rawat, V. (Senior Havaldar)"}</div>
-              </div>
-              <div>
-                <div className="mono text-dim" style={{ fontSize: 11 }}>ASSIGNED SECTOR LOCATION:</div>
-                <div style={{ fontSize: 13.5, color: 'var(--ink)', marginTop: 2 }}>{selectedUnit.sector || "Base Complex"}</div>
-              </div>
-            </div>
-
-            <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
-              <div className="mono text-dim" style={{ fontSize: 11, marginBottom: 8 }}>UNIT RANK-WISE MEMBER BREAKDOWN:</div>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                {Object.keys(rankCounts).length === 0 ? (
-                  <span className="mono text-dim" style={{ fontSize: 12 }}>No personnel assigned to this unit yet.</span>
-                ) : (
-                  Object.entries(rankCounts).map(([rank, count]) => (
-                    <span key={rank} className="chip" style={{ background: 'var(--bg-panel-2)', border: '1px solid var(--line-strong)', fontSize: 11 }}>
-                      <strong>{rank}:</strong> <span style={{ color: 'var(--gold-light)', marginLeft: 4 }}>{count}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span className="mono text-gold" style={{ fontSize: 11, fontWeight: 700 }}>{u.code}</span>
+                    <span className={`chip ${isSelected ? 'chip-gold' : ''}`} style={{ fontSize: 9.5 }}>
+                      {isSelected ? '✓ SELECTED' : (u.sector ? u.sector.split(' ')[0] : 'SECTOR')}
                     </span>
-                  ))
-                )}
+                  </div>
+                  <div style={{ fontSize: 15.5, fontWeight: 800, color: '#ffffff', marginTop: 8 }}>
+                    {u.shortName || u.name}
+                  </div>
+                  <div className="mono text-dim" style={{ fontSize: 11, marginTop: 4 }}>
+                    CO: {u.seniorOfficer ? u.seniorOfficer.split(' ')[0] + ' ' + (u.seniorOfficer.split(' ')[1] || '') : 'Commander'}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginTop: 12 }}>
+                    <span className="mono text-dim">Manning Strength:</span>
+                    <span className="mono text-gold" style={{ fontWeight: 700 }}>{strength} / {u.authorizedStrength || 40} ({pct}%)</span>
+                  </div>
+                  <div className="progress-bar-bg" style={{ marginTop: 6 }}>
+                    <div className="progress-bar-fill" style={{ width: `${Math.min(pct, 100)}%` }}></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Selected Unit Deep-Dive Command Dossier */}
+          {selectedUnit && (
+            <div className="unit-dossier-box hud-corner">
+              <div className="unit-dossier-header">
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span className="chip chip-gold" style={{ fontSize: 10, fontWeight: 700 }}>{selectedUnit.code} · UNIT OVERVIEW</span>
+                    <span className="chip" style={{ background: 'rgba(54, 92, 64, 0.4)', color: '#d0e8d6', fontSize: 10 }}>ACTIVE COMMAND DOSSIER</span>
+                  </div>
+                  <h3 style={{ margin: '4px 0 0', fontSize: 19, color: '#ffffff', fontWeight: 800, letterSpacing: '-0.01em' }}>
+                    {selectedUnit.name} ({selectedUnit.shortName})
+                  </h3>
+                  <div className="mono text-gold" style={{ fontSize: 12, marginTop: 3, fontStyle: 'italic' }}>
+                    "{selectedUnit.motto}"
+                  </div>
+                </div>
+                <div className="unit-dossier-actions">
+                  <button 
+                    onClick={() => {
+                      onSelectUnit(selectedUnit.id);
+                      onNavigateTab('units-members');
+                    }}
+                    className="btn btn-gold btn-sm"
+                    style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <span>VIEW {selectedUnit.shortName} MEMBERS ({unitMembers.length})</span>
+                    <span>➔</span>
+                  </button>
+                  <button 
+                    onClick={() => onNavigateTab('duty-assignment')} 
+                    className="btn btn-secondary btn-sm"
+                    style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <span>ASSIGN DUTY</span>
+                    <span>➔</span>
+                  </button>
+                  <button 
+                    onClick={() => onNavigateTab('roster')} 
+                    className="btn btn-secondary btn-sm"
+                    style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <span>UNIT ROSTER</span>
+                    <span>➔</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 3 Structured Officer & Station Details */}
+              <div className="unit-dossier-cols">
+                <div className="unit-dossier-col">
+                  <div className="mono text-dim" style={{ fontSize: 10.5, letterSpacing: '.06em' }}>SENIOR OFFICER (COMMAND):</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#ffffff', marginTop: 4 }}>{selectedUnit.seniorOfficer || "Col R. S. Rathore"}</div>
+                  <div className="mono text-dim" style={{ fontSize: 10.5, marginTop: 2 }}>Battalion Commander</div>
+                </div>
+                <div className="unit-dossier-col">
+                  <div className="mono text-dim" style={{ fontSize: 10.5, letterSpacing: '.06em' }}>SENIOR SUPERVISOR (JCO/SM):</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--gold-light)', marginTop: 4 }}>{selectedUnit.seniorSupervisor || "Hav Rawat, V."}</div>
+                  <div className="mono text-dim" style={{ fontSize: 10.5, marginTop: 2 }}>Shift & Muster Supervisor</div>
+                </div>
+                <div className="unit-dossier-col">
+                  <div className="mono text-dim" style={{ fontSize: 10.5, letterSpacing: '.06em' }}>PRIMARY SECTOR LOCATION:</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#a2deb3', marginTop: 4 }}>{selectedUnit.sector || "Base Complex"}</div>
+                  <div className="mono text-dim" style={{ fontSize: 10.5, marginTop: 2 }}>Permanent Deployment Zone</div>
+                </div>
+              </div>
+
+              {/* Unit Rank Breakdown Row */}
+              <div className="unit-dossier-rank-row">
+                <div className="mono text-dim" style={{ fontSize: 11, fontWeight: 600 }}>UNIT RANK-WISE STRENGTH BREAKDOWN:</div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {Object.keys(rankCounts).length === 0 ? (
+                    <span className="mono text-dim" style={{ fontSize: 12 }}>No personnel assigned to this unit yet.</span>
+                  ) : (
+                    Object.entries(rankCounts).map(([rank, count]) => (
+                      <span key={rank} className="chip" style={{ background: 'rgba(24, 42, 29, 0.85)', border: '1px solid rgba(197, 160, 89, 0.35)', fontSize: 11, padding: '3px 10px' }}>
+                        <strong style={{ color: '#ffffff' }}>{rank}:</strong> <span style={{ color: 'var(--gold-light)', marginLeft: 4, fontWeight: 700 }}>{count}</span>
+                      </span>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </Panel>
+          )}
+        </Panel>
+      </div>
 
-      {/* Base Strength Chart & Activity Logs */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 20 }}>
-        <Panel title="Unit-Wise Strength & Manning Chart" eyebrow="Authorized vs Current Strength">
+      {/* 4. Base Strength Chart & Activity Stream (Balanced Bottom Grid) */}
+      <div className="ddms-bottom-grid">
+        <Panel title="Unit-Wise Strength & Manning Chart" eyebrow="Authorized vs Current Strength Readiness">
           <div style={{ height: 260 }}>
             <canvas ref={chartRef}></canvas>
           </div>
         </Panel>
 
         <Panel title="Recent Activity & Base Shift Alerts" eyebrow="Operational Audit Notifications">
-          <div style={{ display: 'grid', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, height: 260, justifyContent: 'space-between' }}>
             {alerts.slice(0, 4).map((a, i) => (
-              <div key={i} className="card hud-corner" style={{ background: 'var(--bg-panel-2)', padding: '10px 14px', borderLeft: `3px solid ${a.level === 'danger' || a.severity === 'ALERT' ? '#ef4444' : a.level === 'amber' || a.severity === 'WARN' ? '#f59e0b' : '#dfba74'}` }}>
-                <div style={{ fontSize: 12.5, color: 'var(--ink-bright)', fontWeight: 600 }}>{a.text}</div>
-                <div className="mono text-dim" style={{ fontSize: 10.5, marginTop: 4 }}>{a.time}</div>
+              <div 
+                key={i} 
+                className="card hud-corner" 
+                style={{ 
+                  background: 'rgba(16, 28, 19, 0.85)', 
+                  padding: '10px 14px', 
+                  borderLeft: `3px solid ${a.level === 'danger' || a.severity === 'ALERT' ? '#ef4444' : a.level === 'amber' || a.severity === 'WARN' ? '#f59e0b' : '#dfba74'}`,
+                  borderRadius: 'var(--radius-xs)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center'
+                }}
+              >
+                <div style={{ fontSize: 12, color: '#ffffff', fontWeight: 600, lineHeight: 1.35 }}>{a.text}</div>
+                <div className="mono text-dim" style={{ fontSize: 10, marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>⏱</span>
+                  <span>{a.time}</span>
+                </div>
               </div>
             ))}
           </div>
@@ -4400,6 +4567,14 @@ function DDMSCommandSuite({ user, onLogout }) {
             <span className="chip chip-gold">AUTHORIZED LEVEL 4</span>
           </div>
 
+          {/* Tactical Command Workflow Pipeline across all DDMS tabs */}
+          <DDMSWorkflowPipeline 
+            activeTab={tab} 
+            onNavigateTab={setTab} 
+            unitsCount={units.length}
+            personnelCount={personnel.length}
+          />
+
           <div className="ddms-view-content">
             {tab === 'dashboard' && (
               <DDMSDashboardView
@@ -4792,77 +4967,6 @@ function RuleDetailModal({ ruleCategory, pillar, onClose, onOpenDDMS }) {
 const PillarModal = RuleDetailModal;
 
 
-/* ==========================================================================
-   NOTICES & DIRECTIVES (GAZETTE)
-   ========================================================================== */
-
-function NoticesSection() {
-  return (
-    <section id="notices" className="section" style={{ background: 'var(--bg-surface)' }}>
-      <div className="section-container">
-        <div className="section-header">
-          <span className="eyebrow">OFFICIAL COMMUNICATIONS</span>
-          <h2 className="heading-section">GAZETTE & DIRECTIVES</h2>
-          <p className="section-subtitle">
-            Official announcements, Agniveer recruitment notifications, gallantry citations, and defence advisories.
-          </p>
-        </div>
-
-        <div className="notices-grid">
-          <div className="card hud-corner" style={{ borderRadius: 'var(--radius-card)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <div className="eyebrow">HEADQUARTERS BULLETINS</div>
-              <FlippingWordSwap
-                word1="GAZETTE"
-                word2="ORDERS"
-                duration={350}
-                stagger={26}
-                style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--gold-light)', fontWeight: 700 }}
-              />
-            </div>
-            <div>
-              {NOTICES.map((n, i) => (
-                <div key={i} className="notice-item">
-                  <div className="notice-date">{n.date}</div>
-                  <div>
-                    <h4 className="notice-title">{n.title}</h4>
-                    <p className="notice-desc">{n.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <div className="helpline-box hud-corner">
-              <div className="mono text-gold" style={{ fontSize: 11, letterSpacing: '.1em', marginBottom: 6 }}>EMERGENCY DEFENCE HELPLINE</div>
-              <div className="disp" style={{ fontSize: 24, fontWeight: 800, color: '#ffffff' }}>1904 / 1800-11-0022</div>
-              <p style={{ fontSize: 13, color: 'var(--ink-dim)', marginTop: 8 }}>
-                24/7 Army Headquarters Emergency Operations & Veer Nari Assistance Cell.
-              </p>
-            </div>
-
-            <div className="card hud-corner" style={{ borderRadius: 'var(--radius-card)' }}>
-              <div className="eyebrow" style={{ marginBottom: 8 }}>JOIN INDIAN ARMY</div>
-              <p style={{ fontSize: 13, color: 'var(--ink-dim)', lineHeight: 1.55 }}>
-                Opportunities for Officers (NDA, CDS, TGC, SSC) and Agniveers across all arms and services. Serve the nation with honour, dignity, and pride.
-              </p>
-              <a 
-                href="https://joinindianarmy.nic.in" 
-                target="_blank" 
-                rel="noreferrer" 
-                className="btn btn-primary btn-sm" 
-                style={{ marginTop: 14, width: '100%' }}
-              >
-                JOININDIANARMY.NIC.IN ➔
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 /* ==========================================================================
    FOOTER COMPONENT
@@ -4895,7 +4999,6 @@ function Footer() {
             <ul className="footer-links">
               <li><a href="#about" className="footer-link">Rules & Regulations</a></li>
               <li><a href="#ddms-section" className="footer-link">DDMS Command System</a></li>
-              <li><a href="#notices" className="footer-link">Official Gazette</a></li>
             </ul>
           </div>
 
@@ -5081,9 +5184,6 @@ function App() {
 
         {/* 5. Special Warfare Wings & Fleet Gallery */}
         <GallerySection onSelectImage={setSelectedGalleryItem} />
-
-        {/* 6. Gazette, Directives & Notices */}
-        <NoticesSection />
       </main>
 
       {/* Footer */}
